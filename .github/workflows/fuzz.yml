@@ -1,0 +1,25 @@
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    # A longer weekly run; the corpus is cached, so runs accumulate.
+    - cron: "0 5 * * 0"
+  workflow_dispatch:
+
+name: fuzz
+
+permissions: read-all
+
+jobs:
+  fuzz:
+    uses: pedrobtz/r-actions/.github/workflows/fuzz.yml@v1
+    with:
+      harness: tools/fuzz/harness.c
+      # The vendored interpreter and the shim that replaces its logging;
+      # the rest of src/ talks to R and is not part of the target.
+      sources: src/toywasm/*.c src/toywasm_shim.c
+      cflags: -g -O1 -fno-omit-frame-pointer -Isrc -Isrc/toywasm -DNANOWASM_REAL_ASSERT
+      seed-corpus: tests/testthat/fixtures
+      dictionary: tools/fuzz/wasm.dict
+      max-total-time: ${{ github.event_name == 'schedule' && 1800 || 120 }}

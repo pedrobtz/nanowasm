@@ -6,8 +6,29 @@
 \alias{nanowasm-package}
 \title{nanowasm: Run 'WebAssembly' Modules with a Bundled Interpreter}
 \description{
-Loads 'WebAssembly' modules from raw vectors or files and calls their exported functions from R. Modules run in a bundled interpreter, so no system 'WebAssembly' runtime is needed. R vectors can be copied into and out of a module's linear memory, and R functions can be supplied as imports. Modules are sandboxed: they have no access to files, network or environment beyond the imports they are given, and traps, stack exhaustion, memory growth and timeouts are reported as classed R conditions.
+Load WebAssembly modules and call their functions from R, using the
+bundled toywasm interpreter. Start with \code{vignette("nanowasm")}.
+\itemize{
+\item \code{\link[=wasm_module]{wasm_module()}} loads a module; \code{\link[=wasm_exports]{wasm_exports()}} and \code{\link[=wasm_imports]{wasm_imports()}}
+describe it.
+\item \code{\link[=wasm_instantiate]{wasm_instantiate()}} creates an instance, whose exported functions are
+called with \code{inst$name(...)} or \code{\link[=wasm_call]{wasm_call()}}.
+\item \code{\link[=wasm_memory]{wasm_memory()}} and \code{\link[=wasm_read]{wasm_read()}} / \code{\link[=wasm_write]{wasm_write()}} move data through
+linear memory, and \code{\link[=wasm_global]{wasm_global()}} reads and sets globals.
+\item \code{\link[=wasm_func]{wasm_func()}} turns an R function into an import.
+\item \code{\link[=wasm_limits]{wasm_limits()}} bounds memory, recursion and time, and
+\link{nanowasm-conditions} lists the errors nanowasm signals.
 }
+}
+\section{Options}{
+
+\itemize{
+\item \code{nanowasm.limits}: the default \code{\link[=wasm_limits]{wasm_limits()}} for new instances.
+\item \code{nanowasm.max_module_size}: the largest module, in bytes, that
+\code{\link[=wasm_module]{wasm_module()}} accepts (64 MB by default).
+}
+}
+
 \seealso{
 Useful links:
 \itemize{

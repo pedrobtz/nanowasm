@@ -19,6 +19,14 @@ imports.
 
 ## Installation
 
+Once nanowasm is on CRAN:
+
+``` r
+install.packages("nanowasm")
+```
+
+The development version from GitHub:
+
 ``` r
 # install.packages("pak")
 pak::pak("pedrobtz/nanowasm")

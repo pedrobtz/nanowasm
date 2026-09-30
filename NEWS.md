@@ -1,3 +1,9 @@
+# nanowasm 0.0.0.9006
+
+* New vignette, `vignette("nanowasm")`, covering the whole API and what the
+  sandbox does and doesn't guarantee.
+* Undefined behaviour in the bundled interpreter, found with UBSan, is fixed.
+
 # nanowasm 0.0.0.9005
 
 * Modules can import R functions: wrap them with `wasm_func()` and pass them

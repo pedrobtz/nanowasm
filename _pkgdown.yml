@@ -2,3 +2,29 @@ url: https://pedrobtz.github.io/nanowasm/
 template:
   bootstrap: 5
 
+reference:
+  - title: Modules
+    desc: Load and inspect WebAssembly modules.
+    contents:
+      - wasm_module
+      - wasm_exports
+  - title: Instances and calls
+    desc: Instantiate a module and call its functions.
+    contents:
+      - wasm_instantiate
+      - wasm_global
+      - wasm_limits
+  - title: Linear memory
+    desc: Move data between R and an instance's memory.
+    contents:
+      - wasm_memory
+  - title: Imports
+    desc: Let a module call R.
+    contents:
+      - wasm_func
+  - title: Errors
+    contents:
+      - nanowasm-conditions
+  - title: Package
+    contents:
+      - nanowasm-package

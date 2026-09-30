@@ -1,14 +1,14 @@
 Package: nanowasm
 Title: Run 'WebAssembly' Modules with a Bundled Interpreter
-Version: 0.0.0.9005
+Version: 0.0.0.9006
 Authors@R: c(
     person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
     person("Takashi", "Yamamoto", role = "cph",
            comment = "Author of the bundled toywasm interpreter")
   )
 Description: Loads 'WebAssembly' modules from raw vectors or files and calls
-    their exported functions from R. Modules run in a bundled interpreter, so
-    no system 'WebAssembly' runtime is needed. R vectors can be copied into
+    their exported functions from R. Modules run in the bundled 'toywasm'
+    interpreter, so no system 'WebAssembly' runtime is needed. R vectors can be copied into
     and out of a module's linear memory, and R functions can be supplied as
     imports. Modules are sandboxed: they have no access to files, network or
     environment beyond the imports they are given, and traps, stack
@@ -21,7 +21,10 @@ BugReports: https://github.com/pedrobtz/nanowasm/issues
 Depends: 
     R (>= 4.3)
 Suggests: 
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0)
+VignetteBuilder: knitr
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
