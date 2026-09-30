@@ -15,8 +15,11 @@ How to use this file:
 - Each task is a GitHub issue under its milestone. PRs close them with
   `Closes #n`, and the same PR ticks the box here. Add user-facing changes to
   `NEWS.md` under the development heading.
-- When a milestone closes, bump the dev version (`usethis::use_version("dev")`:
-  0.0.0.9001, .9002, …) so every installed build can be identified.
+- The version stays at 0.0.0.9000 until the 0.1.0 release. The per-milestone
+  dev bumps (0.0.0.9001–.9006) were folded back into it on 2026-09-30.
+  pkgdown runs in development mode (`auto`): until 0.1.0 the site builds at
+  the root marked "unreleased"; from 0.1.0.9000 the dev site builds into
+  `dev/`, with the released site at the root.
 - Scope changes go in §1 first, in their own PR, and not quietly in a task list.
 
 ---
@@ -271,8 +274,9 @@ Should-have:
 - [ ] Tarball under 5 MB, and check time on CRAN-like machines under 5 minutes.
 - [x] `cran-comments.md` written: first submission, vendored toywasm credited,
       no system requirements.
-- [ ] `usethis::use_version("minor")` → 0.1.0, commit, submit, and tag
-      `v0.1.0` once CRAN accepts it. Then bump to 0.1.0.9000.
+- [ ] `usethis::use_version("minor")` → 0.1.0 (from 0.0.0.9000), commit, submit, and
+      tag `v0.1.0` once CRAN accepts it. Then bump to 0.1.0.9000. The 0.1.0 site
+      then builds at the root, with the dev site in `dev/`.
 
 ---
 
