@@ -39,9 +39,14 @@ cat > "$DEST/nanowasm_assert.h" <<'HEADER'
 
 /* Replaces <assert.h> for the vendored toywasm sources. The expression is
    type-checked and its operands count as used, but it is never evaluated
-   and nothing can call abort(). */
+   and nothing can call abort(). The fuzz target (tools/fuzz/) defines
+   NANOWASM_REAL_ASSERT to get the real assertions back. */
+#if defined(NANOWASM_REAL_ASSERT)
+#include <assert.h>
+#else
 #undef assert
 #define assert(e) ((void)sizeof((e) ? 1 : 0))
+#endif
 
 #endif /* !defined(NANOWASM_ASSERT_H) */
 HEADER
@@ -98,9 +103,38 @@ apply context.c \
   's/(\n\s+)struct resulttype \*p;(\n\s+uint32_t i;\n\s+int ret = resulttype_alloc0\(mctx, ntypes, &p\);)/$1struct resulttype *p = NULL;$2/' \
   'resulttype_alloc0 out-parameter'
 
+# ------------------------------------------------ UBSan: NULL + 0, memset(NULL)
+# toywasm's vectors start out NULL and are allocated on first use, and much
+# of the interpreter computes addresses such as &v.p[v.lsize] from them
+# (the next free stack cell, a frame's locals) even when they are still
+# empty. For a NULL p that is NULL + 0, undefined behaviour that CRAN's
+# clang-UBSAN check reports ("applying zero offset to null pointer"). Give
+# every execution vector one preallocated element up front, so its pointer
+# is never NULL; that fixes all those sites at once. An allocation failure
+# here only leaves the old behaviour in place.
+apply exec.c \
+  's/(\n\s+ctx->check_interval = CHECK_INTERVAL_DEFAULT;\n\s+exec_options_set_defaults\(&ctx->options\);\n)/$1        int nw_ret = VEC_PREALLOC(mctx, ctx->frames, 1);\n        nw_ret = VEC_PREALLOC(mctx, ctx->stack, 1);\n        nw_ret = VEC_PREALLOC(mctx, ctx->labels, 1);\n#if defined(TOYWASM_USE_SEPARATE_LOCALS)\n        nw_ret = VEC_PREALLOC(mctx, ctx->locals, 1);\n#endif\n        (void)nw_ret;\n/' \
+  'preallocate the execution vectors in exec_context_init()'
+
+# The cell helpers pass their pointers to memset/memcpy, which must not see
+# NULL even with a zero length.
+apply cell.c \
+  's/(cells_zero\(struct cell \*cells, uint32_t ncells\)\n\{\n)/$1        if (ncells == 0) {\n                return;\n        }\n/' \
+  'cells_zero() of zero cells'
+apply cell.c \
+  's/(cells_copy\(struct cell \*restrict dst, const struct cell \*restrict src,\n\s+uint32_t ncells\)\n\{\n)/$1        if (ncells == 0) {\n                return;\n        }\n/' \
+  'cells_copy() of zero cells'
+
+# ARRAY_FOREACH (and so VEC_FOREACH) computes a + sz for its end pointer,
+# which is NULL + 0 for an empty vector that was never allocated. Stop
+# before computing it when the array is NULL.
+apply util.h \
+  's/#define ARRAY_FOREACH\(p, a, sz\) for \(p = a; p < a \+ sz; p\+\+\)/#define ARRAY_FOREACH(p, a, sz) for (p = a; p != NULL && p < a + sz; p++)/' \
+  'ARRAY_FOREACH over a NULL array'
+
 # ------------------------------------------------------------ end state
 # Guard against what the rewrites above exist to remove.
-if grep -n '#include <assert.h>' "$DEST"/*.c "$DEST"/*.h; then
+if grep -n '#include <assert.h>' "$DEST"/*.c "$DEST"/*.h | grep -v 'nanowasm_assert.h'; then
   echo "patch-for-r: <assert.h> still included" >&2
   exit 1
 fi

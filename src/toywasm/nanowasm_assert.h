@@ -4,8 +4,13 @@
 
 /* Replaces <assert.h> for the vendored toywasm sources. The expression is
    type-checked and its operands count as used, but it is never evaluated
-   and nothing can call abort(). */
+   and nothing can call abort(). The fuzz target (tools/fuzz/) defines
+   NANOWASM_REAL_ASSERT to get the real assertions back. */
+#if defined(NANOWASM_REAL_ASSERT)
+#include <assert.h>
+#else
 #undef assert
 #define assert(e) ((void)sizeof((e) ? 1 : 0))
+#endif
 
 #endif /* !defined(NANOWASM_ASSERT_H) */
