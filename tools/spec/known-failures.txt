@@ -1,0 +1,2 @@
+# Spec test commands known to fail, as "file:line". Empty: every runnable
+# command passes. See tools/spec/runner.R for what is skipped and why.

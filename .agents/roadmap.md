@@ -212,24 +212,37 @@ Tracked in [milestone M5](https://github.com/pedrobtz/nanowasm/milestone/6) (iss
 
 Must-have:
 
-- [x] Sanitizer CI (ASan + UBSan) and valgrind on the full profile, both clean
-      (added in M4, `native-checks.yml`).
-- [ ] Fuzz smoke test: mutated fixtures fed to `wasm_module()` /
-      `wasm_instantiate()` for a bounded time in CI. It must never crash.
-- [ ] Getting-started vignette: load → call → memory → host function →
-      limits and conditions.
-- [ ] Documentation on every export, with runnable examples (no `\dontrun`),
-      a pkgdown reference grouped by area, and a README example matching
-      the vignette.
-- [ ] A section on what the sandbox guarantees and what it does not.
-- [ ] `NEWS.md` entry for 0.1.0.
+- [x] Sanitizer CI (ASan + UBSan) and valgrind on the full profile (added in
+      M4, `native-checks.yml`). A local ASan/UBSan run of every fixture
+      export found NULL + 0 undefined behaviour in toywasm, which is fixed in
+      `patch-for-r.sh`. (#35)
+- [x] Fuzzing: `tools/fuzz/harness.c` (decode, validate, instantiate, with
+      toywasm's real assertions on) run by the r-actions `fuzz.yml`, for
+      2 minutes on each push and 30 minutes weekly, with the fixtures as
+      seeds and a Wasm dictionary. It also builds as a replay driver
+      (`-DNANOWASM_FUZZ_MAIN`) where libFuzzer is missing. (#36)
+- [x] Getting-started vignette, `vignette("nanowasm")`: load → call →
+      memory → imports → limits and conditions → sandbox → getting
+      modules. (#37)
+- [x] Documentation on every export, with runnable examples (no `\dontrun`),
+      a pkgdown reference grouped by area, and a package help page. (#38)
+- [x] What the sandbox guarantees and what it does not: in the vignette and
+      the README. (#39)
+- [x] `cran-extrachecks` pass: install instructions, 'toywasm' named in
+      Description, `cran-comments.md`, full list of local changes in
+      `inst/COPYRIGHTS`; `urlchecker` clean.
 
-Should-have (drop if it holds the release back more than a week):
+Should-have:
 
-- [ ] Spec-test subset runner in `tools/` (CI only), with the pass rate and
-      known gaps recorded.
+- [x] Spec-test runner in `tools/spec/` (CI only, `spec.yml`): 69 core files
+      from WebAssembly/testsuite at a pinned commit, converted by wabt 1.0.37.
+      **18,013 commands pass, 0 fail**, and 6,365 are skipped as not
+      expressible through R (i64 beyond 2^53, NaN payloads,
+      references, non-function imports, text-format assertions). New
+      failures, or known ones that start passing, fail the job. (#40)
 - [ ] Vendoring fixes reported to toywasm (`code_size`, mingw `vasprintf`,
-      `__printflike`).
+      `__printflike`, NULL + 0). Needs the maintainer's go-ahead, since it
+      posts to another project. (#41)
 
 **Exit:** see §3.
 

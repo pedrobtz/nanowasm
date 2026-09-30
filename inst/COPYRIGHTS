@@ -14,11 +14,20 @@ Copyright (c) 2022-2026 YAMAMOTO Takashi. All rights reserved.
 
 Only the interpreter library (upstream lib/) is included, and only the files
 the package's configuration needs. The sources are modified during vendoring
-to suit R: assertions can no longer call abort(), one GNU C extension that
-warns under -pedantic is replaced by upstream's portable fallback, and an
-upstream compile error in a statistics function is fixed. Upstream's logging
-and stdio helpers (xlog.c, nbio.c) are replaced by src/toywasm_shim.c, and
-the build configuration is src/toywasm_config.h.
+to suit R:
+
+- assertions can no longer call abort();
+- one GNU C extension that warns under -pedantic is replaced by upstream's
+  portable fallback;
+- an upstream compile error in a statistics function is fixed;
+- a vasprintf() fallback that clashes with mingw-w64 is skipped there, and
+  printf-style format checking uses gnu_printf on mingw;
+- two variables gcc reports as maybe-uninitialized are initialised;
+- undefined behaviour reported by UBSan on empty vectors (NULL + 0,
+  memset/memcpy of NULL) is avoided.
+
+Upstream's logging and stdio helpers (xlog.c, nbio.c) are replaced by
+src/toywasm_shim.c, and the build configuration is src/toywasm_config.h.
 
 tools/vendor-toywasm.sh and tools/vendor/ in the package's source repository
 perform the vendoring and record what each change does; VENDORED,
