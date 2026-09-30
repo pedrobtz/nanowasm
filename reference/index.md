@@ -7,6 +7,8 @@
 - [`wasm_exports()`](https://pedrobtz.github.io/nanowasm/reference/wasm_exports.md)
   [`wasm_imports()`](https://pedrobtz.github.io/nanowasm/reference/wasm_exports.md)
   : List a module's exports and imports
+- [`wasm_func()`](https://pedrobtz.github.io/nanowasm/reference/wasm_func.md)
+  : Give a module an R function as an import
 - [`wasm_global()`](https://pedrobtz.github.io/nanowasm/reference/wasm_global.md)
   [`` `wasm_global<-`() ``](https://pedrobtz.github.io/nanowasm/reference/wasm_global.md)
   : Read and write an instance's exported globals

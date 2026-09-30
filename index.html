@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nanowasm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -100,7 +100,16 @@
 <span><span class="va">inst</span><span class="op">$</span><span class="fu">fib</span><span class="op">(</span><span class="fl">45L</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Error in inst$fib(45L) :</span></span>
 <span><span class="co">#&gt;   The WebAssembly call was stopped after 1 second, its time limit.</span></span></code></pre></div>
-<p>R functions as imports are on the way to the first release.</p>
+<p>Modules can call back into R through imports:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/wasm_module.html">wasm_module</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"log.wasm"</span>, package <span class="op">=</span> <span class="st">"nanowasm"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">log</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/wasm_func.html">wasm_func</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">ptr</span>, <span class="va">len</span>, <span class="va">caller</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="fu"><a href="reference/wasm_memory.html">wasm_read_string</a></span><span class="op">(</span><span class="va">caller</span><span class="op">$</span><span class="fu">memory</span><span class="op">(</span><span class="op">)</span>, <span class="va">ptr</span>, <span class="va">len</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span>, params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"i32"</span>, <span class="st">"i32"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">inst</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/wasm_instantiate.html">wasm_instantiate</a></span><span class="op">(</span><span class="va">mod</span>, imports <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>env <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>log <span class="op">=</span> <span class="va">log</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">inst</span><span class="op">$</span><span class="fu">greet</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Hello from WebAssembly!</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="sandbox">Sandbox<a class="anchor" aria-label="anchor" href="#sandbox"></a>

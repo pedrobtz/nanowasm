@@ -72,7 +72,19 @@ inst$fib(45L)
 #>   The WebAssembly call was stopped after 1 second, its time limit.
 ```
 
-R functions as imports are on the way to the first release.
+Modules can call back into R through imports:
+
+``` r
+
+mod <- wasm_module(system.file("extdata", "log.wasm", package = "nanowasm"))
+log <- wasm_func(function(ptr, len, caller) {
+  message(wasm_read_string(caller$memory(), ptr, len))
+}, params = c("i32", "i32"))
+
+inst <- wasm_instantiate(mod, imports = list(env = list(log = log)))
+inst$greet()
+#> Hello from WebAssembly!
+```
 
 ## Sandbox
 

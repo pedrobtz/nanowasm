@@ -9,7 +9,7 @@ instance's exported functions. `inst$name(...)` is shorthand for
 ## Usage
 
 ``` r
-wasm_instantiate(module, limits = NULL)
+wasm_instantiate(module, imports = list(), limits = NULL)
 
 wasm_call(instance, name, ...)
 ```
@@ -20,6 +20,16 @@ wasm_call(instance, name, ...)
 
   A `nanowasm_module` from
   [`wasm_module()`](https://pedrobtz.github.io/nanowasm/reference/wasm_module.md).
+
+- imports:
+
+  The module's imports: a list, named by import module, of lists, named
+  by field, of R functions wrapped with
+  [`wasm_func()`](https://pedrobtz.github.io/nanowasm/reference/wasm_func.md).
+  Every import must be provided, with a matching signature; extra
+  entries are ignored. See
+  [`wasm_imports()`](https://pedrobtz.github.io/nanowasm/reference/wasm_exports.md)
+  for what a module needs.
 
 - limits:
 

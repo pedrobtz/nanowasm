@@ -1,5 +1,18 @@
 # Changelog
 
+## nanowasm 0.0.0.9005
+
+- Modules can import R functions: wrap them with
+  [`wasm_func()`](https://pedrobtz.github.io/nanowasm/reference/wasm_func.md)
+  and pass them to `wasm_instantiate(imports = )`. Linking reports every
+  missing or mismatched import at once. An R function with a `caller`
+  argument can reach the calling instance’s memory through
+  `caller$memory()`.
+- An error in an imported R function signals a `nanowasm_host_error`
+  whose `parent` is the original condition; interrupts, restarts and
+  other jumps out of an import unwind the WebAssembly call safely.
+- New example module `log.wasm`.
+
 ## nanowasm 0.0.0.9004
 
 - [`wasm_memory()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)

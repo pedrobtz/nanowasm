@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nanowasm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,12 @@
       <small>Source: <a href="https://github.com/pedrobtz/nanowasm/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.0.0.9005" id="nanowasm-0009005">nanowasm 0.0.0.9005<a class="anchor" aria-label="anchor" href="#nanowasm-0009005"></a></h2>
+<ul><li>Modules can import R functions: wrap them with <code><a href="../reference/wasm_func.html">wasm_func()</a></code> and pass them to <code>wasm_instantiate(imports = )</code>. Linking reports every missing or mismatched import at once. An R function with a <code>caller</code> argument can reach the calling instance’s memory through <code>caller$memory()</code>.</li>
+<li>An error in an imported R function signals a <code>nanowasm_host_error</code> whose <code>parent</code> is the original condition; interrupts, restarts and other jumps out of an import unwind the WebAssembly call safely.</li>
+<li>New example module <code>log.wasm</code>.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9004" id="nanowasm-0009004">nanowasm 0.0.0.9004<a class="anchor" aria-label="anchor" href="#nanowasm-0009004"></a></h2>
 <ul><li>
