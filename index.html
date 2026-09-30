@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>What the Package Does (One Line, Title Case) • nanowasm</title>
+<title>Run WebAssembly Modules with a Bundled Interpreter • nanowasm</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="What the Package Does (One Line, Title Case)">
-<meta name="description" content="What the package does (one paragraph).">
-<meta property="og:description" content="What the package does (one paragraph).">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Run WebAssembly Modules with a Bundled Interpreter">
+<meta name="description" content="Loads WebAssembly modules from raw vectors or files and calls their exported functions from R. Modules run in a bundled interpreter, so no system WebAssembly runtime is needed. R vectors can be copied into and out of a module's linear memory, and R functions can be supplied as imports. Modules are sandboxed: they have no access to files, network or environment beyond the imports they are given, and traps, stack exhaustion, memory growth and timeouts are reported as classed R conditions.">
+<meta property="og:description" content="Loads WebAssembly modules from raw vectors or files and calls their exported functions from R. Modules run in a bundled interpreter, so no system WebAssembly runtime is needed. R vectors can be copied into and out of a module's linear memory, and R functions can be supplied as imports. Modules are sandboxed: they have no access to files, network or environment beyond the imports they are given, and traps, stack exhaustion, memory growth and timeouts are reported as classed R conditions.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nanowasm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/pedrobtz/nanowasm/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -50,25 +51,44 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>The goal of nanowasm is to …</p>
+<p>Run <a href="https://webassembly.org/" class="external-link">WebAssembly</a> modules from R, with nothing to install beyond the package itself.</p>
+<p>nanowasm bundles the <a href="https://github.com/yamt/toywasm" class="external-link">toywasm</a> interpreter by YAMAMOTO Takashi, so it needs no system Wasm runtime, toolchain or download. You load a module from a raw vector or a <code>.wasm</code> file, call its exported functions, move data through its linear memory, and give it R functions as imports.</p>
+<blockquote>
+<p><strong>Status: experimental.</strong> The package is being built towards a first release (0.1.0); the API below is the target and may still change.</p>
+</blockquote>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version of nanowasm from <a href="https://github.com/" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pedrobtz/nanowasm"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
+<h2 id="planned-usage">Planned usage<a class="anchor" aria-label="anchor" href="#planned-usage"></a>
 </h2>
-<p>This is a basic example which shows you how to solve a common problem:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://pedrobtz.github.io/nanowasm/">nanowasm</a></span><span class="op">)</span></span>
-<span><span class="co">## basic example code</span></span></code></pre></div>
+<span></span>
+<span><span class="va">mod</span>  <span class="op">&lt;-</span> <span class="fu">wasm_module</span><span class="op">(</span><span class="st">"fib.wasm"</span><span class="op">)</span></span>
+<span><span class="va">inst</span> <span class="op">&lt;-</span> <span class="fu">wasm_instantiate</span><span class="op">(</span><span class="va">mod</span>, limits <span class="op">=</span> <span class="fu">wasm_limits</span><span class="op">(</span>timeout <span class="op">=</span> <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">inst</span><span class="op">$</span><span class="fu">fib</span><span class="op">(</span><span class="fl">25L</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="sandbox">Sandbox<a class="anchor" aria-label="anchor" href="#sandbox"></a>
+</h2>
+<p>A module can only reach the outside world through the imports you give it. nanowasm supplies none by default: no files, network, environment variables, clocks or randomness. Memory, call depth and running time are capped, and traps, stack exhaustion, memory limits and timeouts are reported as classed R conditions rather than crashes.</p>
+<p>This makes nanowasm a safe place to run <em>untrusted computations</em>. It is not a security boundary that has been audited against deliberately hostile code.</p>
 </div>
 </div>
-  </main><aside class="col-md-3"><div class="license">
+  </main><aside class="col-md-3"><div class="links">
+<h2 data-toc-skip>Links</h2>
+<ul class="list-unstyled">
+<li><a href="https://github.com/pedrobtz/nanowasm/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/pedrobtz/nanowasm/issues" class="external-link">Report a bug</a></li>
+</ul>
+</div>
+
+<div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
 <li><a href="LICENSE.html">Full license</a></li>
@@ -87,7 +107,7 @@
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>First Last <br><small class="roles"> Author, maintainer </small>   </li>
+<li>Pedro Baltazar <br><small class="roles"> Author, maintainer, copyright holder </small>   </li>
 </ul>
 </div>
 
@@ -104,7 +124,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by First Last.</p>
+  <p>Developed by Pedro Baltazar.</p>
 </div>
 
 <div class="pkgdown-footer-right">

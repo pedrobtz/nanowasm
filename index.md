@@ -1,11 +1,18 @@
 # nanowasm
 
-The goal of nanowasm is to …
+Run [WebAssembly](https://webassembly.org/) modules from R, with nothing
+to install beyond the package itself.
+
+nanowasm bundles the [toywasm](https://github.com/yamt/toywasm)
+interpreter by YAMAMOTO Takashi, so it needs no system Wasm runtime,
+toolchain or download. You load a module from a raw vector or a `.wasm`
+file, call its exported functions, move data through its linear memory,
+and give it R functions as imports.
+
+> **Status: experimental.** The package is being built towards a first
+> release (0.1.0); the API below is the target and may still change.
 
 ## Installation
-
-You can install the development version of nanowasm from
-[GitHub](https://github.com/) with:
 
 ``` r
 
@@ -13,12 +20,25 @@ You can install the development version of nanowasm from
 pak::pak("pedrobtz/nanowasm")
 ```
 
-## Example
-
-This is a basic example which shows you how to solve a common problem:
+## Planned usage
 
 ``` r
 
 library(nanowasm)
-## basic example code
+
+mod  <- wasm_module("fib.wasm")
+inst <- wasm_instantiate(mod, limits = wasm_limits(timeout = 5))
+inst$fib(25L)
 ```
+
+## Sandbox
+
+A module can only reach the outside world through the imports you give
+it. nanowasm supplies none by default: no files, network, environment
+variables, clocks or randomness. Memory, call depth and running time are
+capped, and traps, stack exhaustion, memory limits and timeouts are
+reported as classed R conditions rather than crashes.
+
+This makes nanowasm a safe place to run *untrusted computations*. It is
+not a security boundary that has been audited against deliberately
+hostile code.

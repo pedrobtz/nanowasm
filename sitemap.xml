@@ -1,10 +1,12 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://pedrobtz.github.io/nanowasm/404.html</loc></url>
+<url><loc>https://pedrobtz.github.io/nanowasm/CLAUDE.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/LICENSE-text.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/LICENSE.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/authors.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/index.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/news/index.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/index.html</loc></url>
+<url><loc>https://pedrobtz.github.io/nanowasm/reference/nanowasm-package.html</loc></url>
 </urlset>
 
