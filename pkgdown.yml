@@ -2,8 +2,9 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
+  articles/examples: examples.html
   nanowasm: nanowasm.html
-last_built: 2026-09-30T19:41Z
+last_built: 2026-09-30T20:07Z
 urls:
   reference: https://pedrobtz.github.io/nanowasm/reference
   article: https://pedrobtz.github.io/nanowasm/articles
