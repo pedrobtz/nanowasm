@@ -176,8 +176,10 @@ apply_limits(struct nw_instance *ni, SEXP limits)
         double stack = REAL(VECTOR_ELT(limits, 2))[0];
         ni->timeout = REAL(VECTOR_ELT(limits, 3))[0];
         size_t bytes = memory >= (double)SIZE_MAX ? SIZE_MAX : (size_t)memory;
-        /* Nothing is allocated yet, so this cannot fail. */
-        (void)mem_context_setlimit(&ni->mctx, bytes);
+        /* Nothing is allocated yet, so this cannot fail. gcc ignores a
+           (void) cast on a warn_unused_result call, so keep the result. */
+        int ret = mem_context_setlimit(&ni->mctx, bytes);
+        (void)ret;
         ni->options.max_frames = frames >= (double)UINT32_MAX
                                          ? UINT32_MAX
                                          : (uint32_t)frames;
