@@ -13,3 +13,6 @@
 ^doc$
 ^Meta$
 ^cran-comments\.md$
+## Articles under vignettes/articles/ are built by pkgdown only; they are
+## not package vignettes and never run in R CMD check.
+^vignettes/articles$
