@@ -176,18 +176,32 @@ Ctrl-C has been checked by hand on all three OSes.
 
 Tracked in [milestone M4](https://github.com/pedrobtz/nanowasm/milestone/5) (issues #29–#34).
 
-- [ ] `wasm_func()` and the `imports` list. Link errors report every missing
-      import at once and show mismatched signatures side by side.
-- [ ] Trampoline + per-import binding (design §6.2).
-- [ ] Safe R evaluation: `tryCatch` + `R_UnwindProtect` / `R_ContinueUnwind`
-      (design §6.3).
-- [ ] `nanowasm_host_error` with `$parent`, and checks on return values.
-- [ ] `caller` → `nanowasm_caller$memory()`, invalidated after the host call
-      returns.
-- [ ] Re-entry → clear error.
-- [ ] Tests: callbacks that error, warn, get interrupted, exit through a
-      restart, return bad values or re-enter. Also a `gc()` inside a callback.
-- [ ] Example: a string-logging module using an imported `log(ptr, len)`.
+- [x] `wasm_func()` and the `imports` list. Link errors report every missing
+      import, any non-function import, and mismatched signatures side by side
+      (`$missing`, `$mismatch`). (#29)
+- [x] Trampoline + per-import binding: each import's `funcinst` has its own
+      `host_instance`, the binding's first member. The import object is
+      built directly, because toywasm's helper shares one `host_instance`. (#30)
+- [x] Safe R evaluation: the R wrapper returns errors as values, and
+      everything else, including R allocation during conversion, runs under
+      `R_UnwindProtect`, whose cleanup longjmps back into the trampoline. The
+      trampoline traps, and `R_ContinueUnwind` resumes the jump after toywasm
+      has unwound (`nw_finish_run()`). (#31)
+- [x] `nanowasm_host_error` with `$parent`; return values checked (type,
+      length, range, list for several results); i64 arguments beyond 2^53
+      give `nanowasm_precision_error`.
+- [x] `caller` formal → `nanowasm_caller` with `memory()`, invalidated after
+      the host call returns. (#32)
+- [x] Re-entry → `nanowasm_host_error` whose parent is a
+      `nanowasm_reentry_error`. (#33)
+- [x] Tests: error, warning caught outside, restart, custom condition,
+      Ctrl-C in a callback (SIGINT, Unix), re-entry, calling another
+      instance, `gc()` and `gctorture` in callbacks, bad returns, the start
+      function calling imports.
+- [x] Example: `inst/extdata/log.wasm` calls `env.log(ptr, len)`. (#34)
+- [x] `native-checks` workflow (pulled forward from M5, #35): ASan + UBSan,
+      valgrind, LTO, gctorture (step 100), rchk, `-fanalyzer` (vendored tree
+      excluded), CRAN special checks.
 
 **Exit:** every non-local exit from a callback leaves the instance usable.
 Clean under ASan.
@@ -198,7 +212,8 @@ Tracked in [milestone M5](https://github.com/pedrobtz/nanowasm/milestone/6) (iss
 
 Must-have:
 
-- [ ] Sanitizer CI (ASan + UBSan) and valgrind on the full profile, both clean.
+- [x] Sanitizer CI (ASan + UBSan) and valgrind on the full profile, both clean
+      (added in M4, `native-checks.yml`).
 - [ ] Fuzz smoke test: mutated fixtures fed to `wasm_module()` /
       `wasm_instantiate()` for a bounded time in CI. It must never crash.
 - [ ] Getting-started vignette: load → call → memory → host function →

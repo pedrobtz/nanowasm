@@ -40,6 +40,7 @@ instance_release(struct nw_instance *ni)
         if (ni->inst != NULL) {
                 instance_destroy(ni->inst);
         }
+        nw_host_release(ni);
         mem_context_clear(&ni->mctx);
         nw_module_release(ni->mod);
         free(ni);
@@ -188,17 +189,28 @@ apply_limits(struct nw_instance *ni, SEXP limits)
                                              : (uint32_t)stack;
 }
 
+/* funcs: one R wrapper per import, all functions (checked in R). */
 SEXP
-nw_instantiate(SEXP modptr, SEXP limits)
+nw_instantiate(SEXP modptr, SEXP limits, SEXP funcs)
 {
         struct nw_module *nm = nw_module_get(modptr);
-        if (nm->module->nimports > 0) {
-                return nw_fail("nanowasm_link_error",
-                               "The module has imports, which are not "
-                               "supported yet.");
+        const struct module *m = nm->module;
+        if (XLENGTH(funcs) != (R_xlen_t)m->nimports) {
+                Rf_error("internal error: wrong number of imports");
+        }
+        for (uint32_t i = 0; i < m->nimports; i++) {
+                if (m->imports[i].desc.type != EXTERNTYPE_FUNC ||
+                    !Rf_isFunction(VECTOR_ELT(funcs, i))) {
+                        Rf_error("internal error: bad import %u", (unsigned)i);
+                }
         }
 
-        SEXP ptr = PROTECT(R_MakeExternalPtr(NULL, instance_tag(), modptr));
+        SEXP prot = PROTECT(Rf_allocVector(VECSXP, 2));
+        SET_VECTOR_ELT(prot, 0, modptr);
+        SET_VECTOR_ELT(prot, 1, funcs);
+        SEXP ptr = R_MakeExternalPtr(NULL, instance_tag(), prot);
+        UNPROTECT(1);
+        PROTECT(ptr);
         R_RegisterCFinalizerEx(ptr, instance_finalize, TRUE);
         struct nw_instance *ni = calloc(1, sizeof(*ni));
         if (ni == NULL) {
@@ -211,12 +223,19 @@ nw_instantiate(SEXP modptr, SEXP limits)
         mem_context_init(&ni->mctx);
         exec_options_set_defaults(&ni->options);
         apply_limits(ni, limits);
+        ni->self = ptr;
         R_SetExternalPtrAddr(ptr, ni);
+
+        int ret = nw_host_bind(ni, funcs);
+        if (ret != 0) {
+                UNPROTECT(1);
+                return nw_fail_errno(ret, "Could not instantiate the module");
+        }
 
         struct report report;
         report_init(&report);
-        int ret = instance_create_no_init(&ni->mctx, nm->module, &ni->inst,
-                                          NULL, &report);
+        ret = instance_create_no_init(&ni->mctx, nm->module, &ni->inst,
+                                      ni->imports, &report);
         if (ret != 0) {
                 char msg[512];
                 const char *detail = report_getmessage(&report);
@@ -244,6 +263,11 @@ nw_instantiate(SEXP modptr, SEXP limits)
         run_finish(&ctx, ni, instance_execute_init(&ctx), &rr);
         exec_context_clear(&ctx);
         ni->busy = false;
+        SEXP host_failure = nw_finish_run(ni);
+        if (host_failure != NULL) {
+                UNPROTECT(1);
+                return host_failure;
+        }
         if (rr.ret != 0) {
                 UNPROTECT(1);
                 return run_failure(ni, &rr, "Could not instantiate the module");
@@ -252,8 +276,8 @@ nw_instantiate(SEXP modptr, SEXP limits)
         return ptr;
 }
 
-static bool
-is_supported(enum valtype t)
+bool
+nw_is_supported(enum valtype t)
 {
         return t == TYPE_i32 || t == TYPE_i64 || t == TYPE_f32 ||
                t == TYPE_f64;
@@ -263,9 +287,15 @@ static SEXP
 fail_arg(const char *func, R_xlen_t i, enum valtype t, const char *why)
 {
         char msg[512];
-        if (i < 0) {
+        if (i == NW_ARG_VALUE) {
                 snprintf(msg, sizeof(msg), "The value for `%s` (%s) %s.",
                          func, nw_valtype_name(t), why);
+        } else if (i <= NW_ARG_RESULT) {
+                snprintf(msg, sizeof(msg),
+                         "Result %d of the R function imported as `%s` (%s) "
+                         "%s.",
+                         (int)(NW_ARG_RESULT - i + 1), func,
+                         nw_valtype_name(t), why);
         } else {
                 snprintf(msg, sizeof(msg), "Argument %d of `%s` (%s) %s.",
                          (int)(i + 1), func, nw_valtype_name(t), why);
@@ -275,11 +305,12 @@ fail_arg(const char *func, R_xlen_t i, enum valtype t, const char *why)
 
 /*
  * Convert one R argument to a Wasm value of type t. Returns R_NilValue on
- * success, or a failure.
+ * success, or a failure. i is the 0-based argument index, NW_ARG_VALUE for
+ * a global's value, or NW_ARG_RESULT for a host function's result.
  */
-static SEXP
-arg_to_val(SEXP x, enum valtype t, const char *func, R_xlen_t i,
-           struct val *v)
+SEXP
+nw_arg_to_val(SEXP x, enum valtype t, const char *func, R_xlen_t i,
+              struct val *v)
 {
         if (TYPEOF(x) != INTSXP && TYPEOF(x) != REALSXP) {
                 return fail_arg(func, i, t, "must be an integer or double");
@@ -334,10 +365,10 @@ arg_to_val(SEXP x, enum valtype t, const char *func, R_xlen_t i,
         }
 }
 
-/* Convert one Wasm result to R. Returns NULL (not R_NilValue) if an i64
+/* Convert one Wasm value to R. Returns NULL (not R_NilValue) if an i64
    does not fit a double exactly. */
-static SEXP
-val_to_sexp(const struct val *v, enum valtype t)
+SEXP
+nw_val_to_sexp(const struct val *v, enum valtype t)
 {
         switch (t) {
         case TYPE_i32:
@@ -397,12 +428,12 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
         const struct resulttype *pt = &ft->parameter;
         const struct resulttype *rt = &ft->result;
         for (uint32_t i = 0; i < pt->ntypes; i++) {
-                if (!is_supported(pt->types[i])) {
+                if (!nw_is_supported(pt->types[i])) {
                         return fail_unsupported(fname, "parameter", pt->types[i]);
                 }
         }
         for (uint32_t i = 0; i < rt->ntypes; i++) {
-                if (!is_supported(rt->types[i])) {
+                if (!nw_is_supported(rt->types[i])) {
                         return fail_unsupported(fname, "result", rt->types[i]);
                 }
         }
@@ -421,7 +452,7 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
         struct val *results =
                 (struct val *)R_alloc(rt->ntypes + 1, sizeof(struct val));
         for (R_xlen_t i = 0; i < nargs; i++) {
-                SEXP fail = arg_to_val(VECTOR_ELT(args, i), pt->types[i],
+                SEXP fail = nw_arg_to_val(VECTOR_ELT(args, i), pt->types[i],
                                        fname, i, &params[i]);
                 if (fail != R_NilValue) {
                         return fail;
@@ -442,6 +473,10 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
         }
         exec_context_clear(&ctx);
         ni->busy = false;
+        SEXP host_failure = nw_finish_run(ni);
+        if (host_failure != NULL) {
+                return host_failure;
+        }
         if (rr.ret != 0) {
                 snprintf(msg, sizeof(msg), "Could not call `%s`", fname);
                 return run_failure(ni, &rr, msg);
@@ -452,7 +487,7 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
         }
         SEXP out = PROTECT(Rf_allocVector(VECSXP, rt->ntypes));
         for (uint32_t i = 0; i < rt->ntypes; i++) {
-                SEXP v = val_to_sexp(&results[i], rt->types[i]);
+                SEXP v = nw_val_to_sexp(&results[i], rt->types[i]);
                 if (v == NULL) {
                         UNPROTECT(1);
                         snprintf(msg, sizeof(msg),
@@ -486,7 +521,7 @@ find_global(struct nw_instance *ni, SEXP name, SEXP *fail)
                 return NULL;
         }
         struct globalinst *g = VEC_ELEM(ni->inst->globals, idx);
-        if (!is_supported(g->type->t)) {
+        if (!nw_is_supported(g->type->t)) {
                 *fail = fail_unsupported(gname, "value", g->type->t);
                 return NULL;
         }
@@ -504,7 +539,7 @@ nw_global_get(SEXP instptr, SEXP name)
         }
         struct val v;
         global_get(g, &v);
-        SEXP res = val_to_sexp(&v, g->type->t);
+        SEXP res = nw_val_to_sexp(&v, g->type->t);
         if (res == NULL) {
                 char msg[512];
                 snprintf(msg, sizeof(msg),
@@ -535,7 +570,7 @@ nw_global_set(SEXP instptr, SEXP name, SEXP value)
                 return nw_fail("nanowasm_argument_error", msg);
         }
         struct val v;
-        fail = arg_to_val(value, g->type->t, gname, -1, &v);
+        fail = nw_arg_to_val(value, g->type->t, gname, NW_ARG_VALUE, &v);
         if (fail != R_NilValue) {
                 return fail;
         }

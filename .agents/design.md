@@ -311,41 +311,51 @@ inst <- wasm_instantiate(mod, imports = list(env = list(log_i32 = log_fn)))
 ### 6.2 Host-call trampoline
 
 toywasm host functions have no per-function user data, but each imported
-`funcinst` points at its own `struct host_instance`. The glue layer allocates
-one binding per imported function:
+`funcinst` points at its own `struct host_instance`. The glue layer
+allocates one binding per imported function (`src/nw_host.c`):
 
 ```c
 struct nw_host_binding {
-    struct host_instance hi;   /* first member: container_of(hi) recovers the binding */
-    SEXP fn;                   /* R closure, protected via the instance's prot list */
-    const struct functype *ft;
+    struct host_instance hi;   /* first member: the trampoline casts back */
+    struct funcinst fi;        /* is_host, u.host.{instance = &hi, type, func} */
+    SEXP fn;                   /* R wrapper, protected via the instance's prot */
+    const struct import *im;
     struct nw_instance *owner;
 };
 ```
 
-A single C trampoline (`HOST_FUNC_DECL`) recovers the binding, converts
-`cells` → R values, calls R safely (§6.3), and converts the result back into
-`cells`.
+toywasm's `import_object_create_for_host_funcs()` shares one
+`host_instance` across all functions, so the glue builds the import object
+directly (`import_object_alloc()`, one entry per import). A single C
+trampoline recovers the binding and runs the body described below.
 
 ### 6.3 Keeping R's longjmps out of the interpreter
 
 Two layers:
 
-1. **R errors are caught in R.** `wasm_func()` wraps the user function as
-   `function(...) tryCatch(list(TRUE, f(...)), error = function(e) list(FALSE, e))`.
-   An error comes back as a value. The trampoline stores the condition on the
-   instance and returns `host_func_trap()`. After toywasm has unwound, the call
-   raises `nanowasm_host_error` with `parent = <original condition>`.
-2. **Everything else (interrupts, `invokeRestart`, `return()` from an outer
-   frame) is caught in C.** The eval runs under
-   `R_UnwindProtect(eval_fn, data, clean_fn, data, token)`. `clean_fn` does a
-   `longjmp` back into the trampoline, which is the pattern cpp11 uses. The
-   trampoline records the pending unwind and traps. After
-   `exec_context_clear()`, the `.Call` entry calls `R_ContinueUnwind(token)`,
-   so the original jump carries on with the interpreter already cleaned up.
+1. **R errors are caught in R.** The wrapper built by `link_imports()`
+   (`R/imports.R`) calls the user function inside `tryCatch()`. It returns
+   `list(TRUE, value)` or `list(FALSE, condition, message)`. The trampoline
+   records a failure (preserved with `R_PreserveObject`) and traps. After
+   toywasm has unwound, the call returns `nanowasm_host_error` with
+   `parent = <original condition>`.
+2. **Everything else is caught in C.** That covers interrupts, restarts,
+   calling handlers established outside the Wasm call, and even R allocation
+   failures while converting values. The whole body (building arguments,
+   calling the wrapper, checking and converting results) runs under
+   `R_UnwindProtect(body, data, cleanup, &jmpbuf, token)`, and `cleanup`
+   `longjmp`s back into the trampoline, which is the pattern cpp11 uses.
+   The trampoline sets `ni->unwinding` and traps. After
+   `exec_context_clear()`, `nw_finish_run()` calls
+   `R_ContinueUnwind(token)`, so the original jump carries on with the
+   interpreter already cleaned up. The token is created once at load time
+   and preserved.
 
-The trampoline and the `.Call` entry are the only places with `setjmp`, and a
-test covers each of the three exits: normal, R error, and interrupt/restart.
+The caller object needs the instance's R identity, but it may be needed
+while the instance is still being created (the start function can call
+imports). So the C instance keeps its own external pointer (`ni->self`,
+unprotected, valid while a call keeps it alive) and passes it to the
+wrapper, which builds a minimal instance object for `caller$memory()`.
 
 ### 6.4 Interrupts and timeouts
 
