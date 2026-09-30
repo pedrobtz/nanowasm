@@ -25,5 +25,10 @@ Authors:
   \item Pedro Baltazar \email{pedrobtz@gmail.com} [copyright holder]
 }
 
+Other contributors:
+\itemize{
+  \item Takashi Yamamoto (Author of the bundled toywasm interpreter) [copyright holder]
+}
+
 }
 \keyword{internal}

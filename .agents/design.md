@@ -165,8 +165,8 @@ external pointers.
 ```r
 mod <- wasm_module(x)              # x: raw vector, or path to a .wasm file
 wasm_validate(x)                   # TRUE, or a nanowasm_validation_error
-wasm_exports(mod)                  # data.frame: name, kind, type ("(i32, i32) -> i32")
-wasm_imports(mod)                  # data.frame: module, name, kind, type
+wasm_exports(mod)                  # data.frame: name, kind, type ("(i32, i32) -> i32"), sorted by name
+wasm_imports(mod)                  # data.frame: module, name, kind, type, in module order
 print(mod)                         # size, #imports, #exports, first few signatures
 ```
 
@@ -273,9 +273,14 @@ inst <- wasm_instantiate(mod, imports = list(env = list(log_i32 = log_fn)))
 | `nanowasm_memory` | `meminst` (borrowed) | the instance extptr |
 | `nanowasm_func` | nothing (pure R object: function + signature) | — |
 
-- Finalisers (`R_RegisterCFinalizerEx(..., onexit = TRUE)`) destroy the
-  instance before the module. The `prot` chain guarantees the order: an
-  instance references its module, so the module cannot be collected first.
+- Finalisers (`R_RegisterCFinalizerEx(..., onexit = TRUE)`) drop a
+  reference; they don't free directly. When a module and its instance become
+  unreachable together, R marks both ready to finalise in the same collection
+  and runs their finalisers in no guaranteed order. So the `prot` chain alone
+  can't guarantee the instance is destroyed first. Each C object is
+  **reference counted**: the external pointer holds one reference, each
+  instance holds one on its module, and the last release frees. `prot` still
+  keeps the R-side objects reachable.
 - Every entry point checks for a NULL address (after `saveRDS`/`readRDS` or
   after an explicit `wasm_close()`) and raises `nanowasm_invalid_object`.
 - R-side objects are thin S3 lists (`list(ptr = <extptr>, ...)`, with a class)
@@ -343,19 +348,22 @@ stops with the restartable `ETOYWASMUSERINTERRUPT` when `*ctx->intrp != 0`.
 Nothing sets that flag without a second thread, and threads are off the table
 for CRAN and Windows. So:
 
-- **Patch (small, to be offered upstream):** an optional embedder callback,
-  `ctx->check_interrupt_hook(ctx, arg)`, called from `check_interrupt()`.
-- The glue hook:
+- **No patch is needed.** toywasm's own CLI implements `--timeout` this way
+  (`cli/repl.c`, `setup_timeout()`): point `ctx->intrp` at a constant 1
+  and set `ctx->user_intr_delay = 1`. `check_interrupt()`, which the
+  main loop calls every `check_interval` instructions (adapted to about
+  every 50 ms on POSIX; every 1000 instructions on Windows), then returns
+  `ETOYWASMUSERINTERRUPT` on every other check. That is a restartable
+  error, so the glue's restart loop:
   - checks the wall-clock deadline (`limits$timeout`);
   - checks for a pending Ctrl-C without longjmp: `R_ToplevelExec()` around
-    `R_CheckUserInterrupt()`, which returns FALSE if an interrupt was pending
-    (the standard idiom);
-  - either one sets the flag. The call then aborts (it is not resumed),
-    cleans up, and raises `nanowasm_timeout`, or for Ctrl-C re-raises a
-    base `interrupt` condition so `tryCatch(interrupt = )` works as users
-    expect.
-- If the upstream check interval turns out too coarse for a responsive Ctrl-C,
-  tune it in the config rather than polling from the dispatch loop.
+    `R_CheckUserInterrupt()`, which returns FALSE if an interrupt was
+    pending (the standard idiom), rate-limited by the clock so Windows'
+    instruction-count interval doesn't make it expensive;
+  - on either, it aborts the call (it is not resumed), cleans up, and
+    raises `nanowasm_timeout`. For Ctrl-C it re-raises a base `interrupt`
+    condition, so `tryCatch(interrupt = )` works as users expect. Otherwise
+    it resumes with `instance_execute_handle_restart_once()`.
 
 After an aborted call, the instance's globals and memory may be partly
 updated, as they would be after a trap. The instance stays usable. The docs
@@ -402,7 +410,9 @@ nanowasm_error
 ├── nanowasm_link_error            $missing (data.frame), $mismatch
 ├── nanowasm_argument_error        wrong arity/type/range at the R→Wasm boundary
 │   └── nanowasm_precision_error   i64 value not representable as double
-├── nanowasm_trap                  $trap_id (e.g. "unreachable"), $function (name if known)
+├── nanowasm_unsupported           funcref/externref/v128 at the R boundary
+├── nanowasm_runtime_error         any other interpreter error code
+├── nanowasm_trap                  $trap_id (e.g. "unreachable"), $detail (toywasm's message)
 │   ├── nanowasm_stack_exhausted   TRAP_TOO_MANY_FRAMES / _STACKCELLS
 │   ├── nanowasm_out_of_bounds     memory/table/data/element OOB, incl. wasm_read/wasm_write
 │   └── nanowasm_memory_limit      allocation refused by the mem_context limit
@@ -414,11 +424,15 @@ nanowasm_error
   (`div_by_zero`, `integer_overflow`, `out_of_bounds_memory_access`,
   `unreachable`, `call_indirect_*`, `invalid_conversion_to_integer`, …),
   mapped in one table in `conditions.c`.
-- Conditions are built in C only as data (class, message, fields). The
-  actual `stop()` happens from R. `.Call` returns a tagged "error result"
-  and an R wrapper signals it. This keeps condition construction in one R
-  function (`nanowasm_abort()`) and keeps all `Rf_error` longjmps out of C
-  paths that hold toywasm resources.
+- Conditions are built in C only as data: `.Call` returns a list of class
+  `nanowasm_failure` (`class`, `message`, `fields`), and `nw_check()` in R
+  signals it (`src/nw_failure.c`, `R/conditions.R`). This keeps all
+  `Rf_error` longjmps out of C paths that hold toywasm resources. The
+  condition's `call` is the user's call (`inst$add(1L)`, not an internal
+  helper).
+- The name of the function that trapped (from the name section) is not
+  reported yet. `detail` carries toywasm's own message, which often includes
+  the code offset.
 - Ctrl-C re-signals base R's `interrupt` condition rather than a
   `nanowasm_*` class.
 
@@ -497,5 +511,8 @@ later releases.
 5. **Sharing between instances.** Import one instance's exported memory or
    functions into another. The glue layer design allows it (import_object
    chain); it is deferred for API reasons, not technical ones.
-6. **Upstream patches.** The interrupt hook and the logging shim. Offer them
-   to toywasm early, so the vendored patch set shrinks toward zero.
+6. **Upstream fixes.** No toywasm patch is needed for interrupts or
+   logging. The vendoring substitutions that fix real upstream issues
+   (`code_size` with the writer off, mingw's `vasprintf` clash,
+   `__printflike` on mingw) should be reported upstream so the patch set
+   shrinks.
