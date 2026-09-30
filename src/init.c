@@ -10,8 +10,16 @@ static const R_CallMethodDef call_methods[] = {
         CALLDEF(nw_module_load, 1),
         CALLDEF(nw_module_exports, 1),
         CALLDEF(nw_module_imports, 1),
-        CALLDEF(nw_instantiate, 1),
+        CALLDEF(nw_instantiate, 2),
         CALLDEF(nw_call, 3),
+        CALLDEF(nw_global_get, 2),
+        CALLDEF(nw_global_set, 3),
+        CALLDEF(nw_memory_index, 2),
+        CALLDEF(nw_memory_size, 2),
+        CALLDEF(nw_memory_grow, 3),
+        CALLDEF(nw_memory_read, 5),
+        CALLDEF(nw_memory_write, 5),
+        CALLDEF(nw_memory_strlen, 3),
         {NULL, NULL, 0}
 };
 

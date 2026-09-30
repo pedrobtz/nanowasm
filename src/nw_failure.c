@@ -207,3 +207,31 @@ nw_fail_errno(int err, const char *what)
                  err);
         return nw_fail("nanowasm_runtime_error", msg);
 }
+
+SEXP
+nw_fail_timeout(double elapsed, double limit)
+{
+        SEXP fields = PROTECT(Rf_allocVector(VECSXP, 2));
+        SEXP names = PROTECT(Rf_allocVector(STRSXP, 2));
+        SET_VECTOR_ELT(fields, 0, Rf_ScalarReal(elapsed));
+        SET_VECTOR_ELT(fields, 1, Rf_ScalarReal(limit));
+        SET_STRING_ELT(names, 0, Rf_mkChar("elapsed"));
+        SET_STRING_ELT(names, 1, Rf_mkChar("limit"));
+        Rf_setAttrib(fields, R_NamesSymbol, names);
+        char msg[256];
+        snprintf(msg, sizeof(msg),
+                 "The WebAssembly call was stopped after %.3g second%s, its "
+                 "time limit.",
+                 limit, limit == 1 ? "" : "s");
+        SEXP res = make_failure(Rf_mkString("nanowasm_timeout"), msg, fields);
+        UNPROTECT(2);
+        return res;
+}
+
+/* R turns this into a base `interrupt` condition, as for a Ctrl-C in R
+   code. */
+SEXP
+nw_fail_interrupt(void)
+{
+        return nw_fail("nanowasm_interrupt", "Interrupted.");
+}

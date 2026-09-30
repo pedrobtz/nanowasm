@@ -13,5 +13,6 @@ PKG_CPPFLAGS = -I. -Itoywasm -DNDEBUG
 ## extension.
 include toywasm/objects.mk
 
-OBJECTS = init.o info.o nw_failure.o nw_instance.o nw_module.o toywasm_shim.o \
+OBJECTS = init.o info.o nw_clock.o nw_failure.o nw_instance.o nw_memory.o \
+          nw_module.o toywasm_shim.o \
           $(TOYWASM_OBJECTS)

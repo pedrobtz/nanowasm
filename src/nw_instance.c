@@ -70,26 +70,78 @@ nw_instance_get(SEXP ptr)
 /* The outcome of running Wasm code, captured before the context is
    cleared: either success or everything needed to describe the failure. */
 struct run_result {
-        int ret;
+        int ret; /* 0, a toywasm/errno code, or NW_TIMEDOUT / NW_INTERRUPTED */
         struct trap_info trap;
         char detail[512];
+        double elapsed;
 };
+
+#define NW_TIMEDOUT (-1000)
+#define NW_INTERRUPTED (-1001)
+
+/* How often, at most, a running call looks for a pending Ctrl-C. */
+#define NW_INTERRUPT_CHECK_SECONDS 0.1
+
+/*
+ * Keeping the user interrupt permanently raised makes toywasm stop with the
+ * restartable ETOYWASMUSERINTERRUPT at every other interrupt check (every
+ * ~50 ms of execution on POSIX, every 1000 instructions on Windows), which
+ * is when timeouts and Ctrl-C are checked. toywasm's own CLI implements
+ * --timeout the same way.
+ */
+static const atomic_uint nw_interrupt_raised = 1;
 
 static void
 run_init(struct exec_context *ctx, struct nw_instance *ni)
 {
         exec_context_init(ctx, ni->inst, &ni->mctx);
         ctx->options = ni->options;
+        ctx->intrp = &nw_interrupt_raised;
+        ctx->user_intr_delay = 1;
 }
 
 static void
-run_finish(struct exec_context *ctx, int ret, struct run_result *rr)
+check_user_interrupt(void *unused)
 {
+        (void)unused;
+        R_CheckUserInterrupt();
+}
+
+/*
+ * Run a started execution to completion, resuming it after each restartable
+ * stop. No toywasm frame is on the C stack here, so R_ToplevelExec() may
+ * look for a Ctrl-C: it returns FALSE, instead of jumping, if one was
+ * pending.
+ */
+static void
+run_finish(struct exec_context *ctx, struct nw_instance *ni, int ret,
+           struct run_result *rr)
+{
+        const double start = nw_clock();
+        const bool has_deadline = ni->timeout > 0 && isfinite(ni->timeout);
+        double last_check = start;
+        rr->detail[0] = '\0';
+        rr->elapsed = 0;
         while (IS_RESTARTABLE(ret)) {
+                if (ret == ETOYWASMUSERINTERRUPT) {
+                        double now = nw_clock();
+                        if (has_deadline && now - start > ni->timeout) {
+                                rr->ret = NW_TIMEDOUT;
+                                rr->elapsed = now - start;
+                                return;
+                        }
+                        if (now - last_check >= NW_INTERRUPT_CHECK_SECONDS) {
+                                last_check = now;
+                                if (!R_ToplevelExec(check_user_interrupt,
+                                                    NULL)) {
+                                        rr->ret = NW_INTERRUPTED;
+                                        return;
+                                }
+                        }
+                }
                 ret = instance_execute_handle_restart_once(ctx, ret);
         }
         rr->ret = ret;
-        rr->detail[0] = '\0';
         if (ret == ETOYWASMTRAP) {
                 rr->trap = ctx->trap;
                 const char *msg = report_getmessage(ctx->report);
@@ -100,16 +152,42 @@ run_finish(struct exec_context *ctx, int ret, struct run_result *rr)
 }
 
 static SEXP
-run_failure(const struct run_result *rr, const char *what)
+run_failure(const struct nw_instance *ni, const struct run_result *rr,
+            const char *what)
 {
-        if (rr->ret == ETOYWASMTRAP) {
+        switch (rr->ret) {
+        case ETOYWASMTRAP:
                 return nw_fail_trap(&rr->trap, rr->detail);
+        case NW_TIMEDOUT:
+                return nw_fail_timeout(rr->elapsed, ni->timeout);
+        case NW_INTERRUPTED:
+                return nw_fail_interrupt();
+        default:
+                return nw_fail_errno(rr->ret, what);
         }
-        return nw_fail_errno(rr->ret, what);
+}
+
+/* limits: list(memory = bytes, frames, stack, timeout), checked in R. */
+static void
+apply_limits(struct nw_instance *ni, SEXP limits)
+{
+        double memory = REAL(VECTOR_ELT(limits, 0))[0];
+        double frames = REAL(VECTOR_ELT(limits, 1))[0];
+        double stack = REAL(VECTOR_ELT(limits, 2))[0];
+        ni->timeout = REAL(VECTOR_ELT(limits, 3))[0];
+        size_t bytes = memory >= (double)SIZE_MAX ? SIZE_MAX : (size_t)memory;
+        /* Nothing is allocated yet, so this cannot fail. */
+        (void)mem_context_setlimit(&ni->mctx, bytes);
+        ni->options.max_frames = frames >= (double)UINT32_MAX
+                                         ? UINT32_MAX
+                                         : (uint32_t)frames;
+        ni->options.max_stackcells = stack >= (double)UINT32_MAX
+                                             ? UINT32_MAX
+                                             : (uint32_t)stack;
 }
 
 SEXP
-nw_instantiate(SEXP modptr)
+nw_instantiate(SEXP modptr, SEXP limits)
 {
         struct nw_module *nm = nw_module_get(modptr);
         if (nm->module->nimports > 0) {
@@ -130,8 +208,7 @@ nw_instantiate(SEXP modptr)
         nm->refs++;
         mem_context_init(&ni->mctx);
         exec_options_set_defaults(&ni->options);
-        ni->options.max_frames = NW_DEFAULT_MAX_FRAMES;
-        ni->options.max_stackcells = NW_DEFAULT_MAX_STACKCELLS;
+        apply_limits(ni, limits);
         R_SetExternalPtrAddr(ptr, ni);
 
         struct report report;
@@ -141,9 +218,13 @@ nw_instantiate(SEXP modptr)
         if (ret != 0) {
                 char msg[512];
                 const char *detail = report_getmessage(&report);
+                if (ret == ENOMEM) {
+                        detail = "its memory limit was exceeded";
+                } else if (detail == NULL || strcmp(detail, "no message") == 0) {
+                        detail = strerror(ret);
+                }
                 snprintf(msg, sizeof(msg), "Could not instantiate the module: %s.",
-                         detail != NULL && detail[0] != '\0' ? detail
-                                                             : strerror(ret));
+                         detail);
                 report_clear(&report);
                 ni->inst = NULL;
                 UNPROTECT(1);
@@ -156,12 +237,14 @@ nw_instantiate(SEXP modptr)
         /* Data and element segments, then the start function. */
         struct exec_context ctx;
         struct run_result rr;
+        ni->busy = true;
         run_init(&ctx, ni);
-        run_finish(&ctx, instance_execute_init(&ctx), &rr);
+        run_finish(&ctx, ni, instance_execute_init(&ctx), &rr);
         exec_context_clear(&ctx);
+        ni->busy = false;
         if (rr.ret != 0) {
                 UNPROTECT(1);
-                return run_failure(&rr, "Could not instantiate the module");
+                return run_failure(ni, &rr, "Could not instantiate the module");
         }
         UNPROTECT(1);
         return ptr;
@@ -178,9 +261,13 @@ static SEXP
 fail_arg(const char *func, R_xlen_t i, enum valtype t, const char *why)
 {
         char msg[512];
-        snprintf(msg, sizeof(msg),
-                 "Argument %d of `%s` (%s) %s.", (int)(i + 1), func,
-                 nw_valtype_name(t), why);
+        if (i < 0) {
+                snprintf(msg, sizeof(msg), "The value for `%s` (%s) %s.",
+                         func, nw_valtype_name(t), why);
+        } else {
+                snprintf(msg, sizeof(msg), "Argument %d of `%s` (%s) %s.",
+                         (int)(i + 1), func, nw_valtype_name(t), why);
+        }
         return nw_fail("nanowasm_argument_error", msg);
 }
 
@@ -289,6 +376,13 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
         const char *fname = Rf_translateCharUTF8(STRING_ELT(name, 0));
         struct name wname = {(uint32_t)strlen(fname), fname};
         char msg[512];
+        if (ni->busy) {
+                snprintf(msg, sizeof(msg),
+                         "Can't call `%s`: the instance is already running a "
+                         "call.",
+                         fname);
+                return nw_fail("nanowasm_reentry_error", msg);
+        }
 
         uint32_t funcidx;
         if (module_find_export(m, &wname, EXTERNTYPE_FUNC, &funcidx) != 0) {
@@ -334,19 +428,21 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
 
         struct exec_context ctx;
         struct run_result rr;
+        ni->busy = true;
         run_init(&ctx, ni);
         int ret = exec_push_vals(&ctx, pt, params);
         if (ret == 0) {
                 ret = instance_execute_func(&ctx, funcidx, pt, rt);
         }
-        run_finish(&ctx, ret, &rr);
+        run_finish(&ctx, ni, ret, &rr);
         if (rr.ret == 0) {
                 exec_pop_vals(&ctx, rt, results);
         }
         exec_context_clear(&ctx);
+        ni->busy = false;
         if (rr.ret != 0) {
                 snprintf(msg, sizeof(msg), "Could not call `%s`", fname);
-                return run_failure(&rr, msg);
+                return run_failure(ni, &rr, msg);
         }
 
         if (rt->ntypes == 0) {
@@ -369,4 +465,78 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
         }
         UNPROTECT(1);
         return rt->ntypes == 1 ? VECTOR_ELT(out, 0) : out;
+}
+
+/* The global exported as `name`, or NULL with *fail set. */
+static struct globalinst *
+find_global(struct nw_instance *ni, SEXP name, SEXP *fail)
+{
+        const struct module *m = ni->mod->module;
+        const char *gname = Rf_translateCharUTF8(STRING_ELT(name, 0));
+        struct name wname = {(uint32_t)strlen(gname), gname};
+        uint32_t idx;
+        if (module_find_export(m, &wname, EXTERNTYPE_GLOBAL, &idx) != 0) {
+                char msg[512];
+                snprintf(msg, sizeof(msg),
+                         "The instance has no exported global named `%s`.",
+                         gname);
+                *fail = nw_fail("nanowasm_argument_error", msg);
+                return NULL;
+        }
+        struct globalinst *g = VEC_ELEM(ni->inst->globals, idx);
+        if (!is_supported(g->type->t)) {
+                *fail = fail_unsupported(gname, "value", g->type->t);
+                return NULL;
+        }
+        return g;
+}
+
+SEXP
+nw_global_get(SEXP instptr, SEXP name)
+{
+        struct nw_instance *ni = nw_instance_get(instptr);
+        SEXP fail = R_NilValue;
+        struct globalinst *g = find_global(ni, name, &fail);
+        if (g == NULL) {
+                return fail;
+        }
+        struct val v;
+        global_get(g, &v);
+        SEXP res = val_to_sexp(&v, g->type->t);
+        if (res == NULL) {
+                char msg[512];
+                snprintf(msg, sizeof(msg),
+                         "The global `%s` (i64) is %lld, which a double "
+                         "cannot represent exactly.",
+                         Rf_translateCharUTF8(STRING_ELT(name, 0)),
+                         (long long)(int64_t)v.u.i64);
+                return nw_fail2("nanowasm_precision_error",
+                                "nanowasm_argument_error", msg);
+        }
+        return res;
+}
+
+SEXP
+nw_global_set(SEXP instptr, SEXP name, SEXP value)
+{
+        struct nw_instance *ni = nw_instance_get(instptr);
+        SEXP fail = R_NilValue;
+        struct globalinst *g = find_global(ni, name, &fail);
+        if (g == NULL) {
+                return fail;
+        }
+        const char *gname = Rf_translateCharUTF8(STRING_ELT(name, 0));
+        if (g->type->mut != GLOBAL_VAR) {
+                char msg[512];
+                snprintf(msg, sizeof(msg),
+                         "The global `%s` is immutable.", gname);
+                return nw_fail("nanowasm_argument_error", msg);
+        }
+        struct val v;
+        fail = arg_to_val(value, g->type->t, gname, -1, &v);
+        if (fail != R_NilValue) {
+                return fail;
+        }
+        global_set(g, &v);
+        return R_NilValue;
 }

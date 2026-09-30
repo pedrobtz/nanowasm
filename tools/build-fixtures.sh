@@ -8,6 +8,9 @@
 # sources. wabt is pinned so the output is byte-identical across machines:
 # a wat2wasm on PATH is used only if it is that version, otherwise the npm
 # build of the same release runs through npx.
+#
+# A fixture that needs extra wat2wasm flags names them on its first line:
+#   ;; wat2wasm: --enable-multi-memory
 set -eu
 
 WABT_VERSION="1.0.37"
@@ -23,7 +26,9 @@ fi
 for dir in tests/testthat/fixtures inst/extdata; do
   for wat in "$PKG_ROOT/$dir"/*.wat; do
     [ -e "$wat" ] || continue
-    wat2wasm "$wat" -o "${wat%.wat}.wasm"
+    flags="$(sed -n '1s/^;; wat2wasm: //p' "$wat")"
+    # shellcheck disable=SC2086 # flags are deliberately split
+    wat2wasm $flags "$wat" -o "${wat%.wat}.wasm"
     echo "built $dir/$(basename "${wat%.wat}.wasm")"
   done
 done

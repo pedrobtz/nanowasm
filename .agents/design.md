@@ -215,7 +215,7 @@ parameter passes through as a NaN. Length-0 or length > 1 arguments are errors.
 
 ```r
 mem <- wasm_memory(inst, name = NULL)          # NULL: the single exported memory, or error if ambiguous
-wasm_memory_size(mem)                          # bytes (and pages attr)
+wasm_memory_size(mem, unit = c("bytes", "pages"))
 wasm_memory_grow(mem, pages)                   # old size in pages, or error at limit
 wasm_read(mem, offset, n, type = "u8")         # n elements, not bytes
 wasm_write(mem, offset, x, type = "u8")        # invisibly returns the next offset
@@ -229,8 +229,14 @@ wasm_write_string(mem, offset, x, nul = TRUE)
 - Offsets are 0-based byte addresses, matching Wasm pointers. This is the one
   place the package is deliberately not 1-based, and the docs say so up front.
 - Every access is bounds-checked against the *current* memory size and gives
-  `nanowasm_out_of_bounds` on failure. The data pointer is re-fetched on every
-  access, because `memory.grow` can reallocate it.
+  `nanowasm_out_of_bounds` (a subclass of `nanowasm_argument_error` here) on
+  failure. The data pointer is re-fetched on every access, because
+  `memory.grow` can reallocate it. toywasm allocates memory lazily (and
+  memories under 4 pages grow without reallocating), so an access goes
+  through `memory_instance_getptr2()`, which may extend the allocation. That
+  extension counts against the instance's memory limit.
+- A write converts and range-checks the whole vector into a buffer first, so
+  a bad element leaves the memory unchanged.
 - Endianness: Wasm memory is little-endian. Use `memcpy` plus a byte swap on
   big-endian hosts, so correctness never depends on the host.
 - A `nanowasm_memory` object holds a reference to its instance, so the instance
@@ -388,7 +394,10 @@ wasm_limits(
   `nanowasm_memory_limit`.
 - **frames/stack** turn deep recursion into the `TRAP_TOO_MANY_FRAMES` /
   `TRAP_TOO_MANY_STACKCELLS` traps, reported as
-  `nanowasm_stack_exhausted`. toywasm does not recurse on the C stack for
+  `nanowasm_stack_exhausted`. With `TOYWASM_USE_SEPARATE_LOCALS`, locals
+  live outside the operand stack, so `stack` bounds only operand values.
+  Plain recursion hits `frames`, and locals are bounded by `frames` times
+  the frame size, both under the memory limit. toywasm does not recurse on the C stack for
   Wasm→Wasm calls, so the C stack is not the limit. Host callbacks are the
   exception: each Wasm→R→Wasm round trip uses real C stack, which is one more
   reason to forbid re-entry in v0.1.
@@ -499,8 +508,10 @@ later releases.
 1. **Lossless i64.** Options: accept/return `bit64::integer64` when bit64 is
    installed (Suggests), or a `"string"` mode. Decide when a real user
    needs more than 53 bits.
-2. **Re-entrancy.** Should a host callback be allowed to call back into the
-   same instance? toywasm probably supports a nested `exec_context` on the
+2. **Re-entrancy.** Each instance has a busy flag, and a call into a running
+   instance gives `nanowasm_reentry_error`. It can already happen in M3
+   through R event handlers run while checking for Ctrl-C. Should a host
+   callback be allowed to call back into the same instance? toywasm probably supports a nested `exec_context` on the
    same instance, but it needs testing, a C-stack depth guard, and a clear
    story for the state of the outer call.
 3. **Instance reuse after a trap or timeout.** Keep it usable (current plan),
