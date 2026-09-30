@@ -5,3 +5,4 @@ src/*.dll
 src/toywasm/*.o
 /doc/
 /Meta/
+.claude/settings.local.json
