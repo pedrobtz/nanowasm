@@ -2,5 +2,6 @@
 "_PACKAGE"
 
 ## usethis namespace: start
+#' @useDynLib nanowasm, .registration = TRUE
 ## usethis namespace: end
 NULL

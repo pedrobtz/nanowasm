@@ -5,3 +5,8 @@
 ^pkgdown$
 ^CLAUDE\.md$
 ^\.agents$
+^tools$
+## R CMD build strips src/*.o but not object files in src subdirectories.
+^src/.*\.o$
+^src/.*\.so$
+^src/.*\.dll$

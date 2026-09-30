@@ -1,0 +1,55 @@
+#!/bin/sh
+# Verify the vendored toywasm tree against its recorded checksums.
+#
+# Run from the package root. Exits non-zero if any vendored file has been
+# added, removed or edited since tools/vendor-toywasm.sh last ran.
+set -eu
+
+# comm needs both inputs sorted in the collation it uses itself.
+LC_ALL=C
+export LC_ALL
+
+if command -v sha256sum >/dev/null 2>&1; then
+  SHA_CHECK="sha256sum -c"
+elif command -v shasum >/dev/null 2>&1; then
+  SHA_CHECK="shasum -a 256 -c"
+else
+  echo "verify: neither sha256sum nor shasum found" >&2
+  exit 1
+fi
+
+CHECKSUMS="tools/vendor/checksums.sha256"
+MANIFEST="tools/vendor/manifest.tsv"
+
+[ -f "$MANIFEST" ]  || { echo "verify: missing $MANIFEST"  >&2; exit 1; }
+[ -f "$CHECKSUMS" ] || { echo "verify: missing $CHECKSUMS" >&2; exit 1; }
+
+status=0
+
+# 1. Every recorded file must still be present and unchanged.
+if ! $SHA_CHECK "$CHECKSUMS" >/dev/null 2>&1; then
+  echo "verify: vendored files do not match $CHECKSUMS" >&2
+  $SHA_CHECK "$CHECKSUMS" 2>&1 | grep -v ': OK$' >&2 || true
+  status=1
+fi
+
+# 2. No unrecorded file may have appeared beside them. Build products are
+#    not source, so they are ignored.
+recorded="$(mktemp)"; present="$(mktemp)"
+trap 'rm -f "$recorded" "$present"' EXIT
+
+sed -e 's/^[0-9a-f]*  //' "$CHECKSUMS" | sort > "$recorded"
+{ find src/toywasm -type f ! -name 'objects.mk' ! -name '*.o' ! -name '*.d'
+  echo inst/TOYWASM_LICENSE
+} | sort > "$present"
+
+if ! extra="$(comm -13 "$recorded" "$present")" || [ -n "$extra" ]; then
+  echo "verify: unrecorded files under the vendored tree:" >&2
+  echo "$extra" >&2
+  status=1
+fi
+
+if [ "$status" -eq 0 ]; then
+  echo "verify: vendored tree matches the manifest ($(wc -l < "$recorded" | tr -d ' ') files)"
+fi
+exit $status

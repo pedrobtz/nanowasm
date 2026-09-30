@@ -1,0 +1,104 @@
+# Files copied from toywasm's lib/ into src/toywasm/ by tools/vendor-toywasm.sh.
+#
+# This is the closure of what src/toywasm_config.h needs: the core
+# interpreter, with no threads, WASI, dynamic linking, SIMD, exception
+# handling or module writer. Headers were listed with `cc -MM` over the .c
+# files below. Enabling a feature in toywasm_config.h can pull in more
+# headers (insn_impl_simd.h, ...); add them here and re-vendor.
+#
+# Deliberately not vendored:
+#   xlog.c nbio.c   stdout/stderr output; replaced by src/toywasm_shim.c
+#   fileio.c        file loading; modules are read by R
+#   cluster.c suspend.c waitlist.c lock.c usched.c shared_memory.c
+#                   threads support
+#   module_writer.c TOYWASM_ENABLE_WRITER is off
+#   *.in            CMake templates; src/toywasm_config.h replaces them
+
+bitmap.c
+cconv.c
+cell.c
+context.c
+decode.c
+dummy_host_func.c
+endian.c
+escape.c
+exec.c
+exec_debug.c
+exec_insn_subr.c
+expr.c
+expr_parser.c
+host_instance.c
+idalloc.c
+import_object.c
+insn.c
+instance.c
+leb128.c
+list.c
+load_context.c
+mem.c
+module.c
+name.c
+options.c
+report.c
+restart.c
+slist.c
+timeutil.c
+type.c
+util.c
+validation.c
+vec.c
+
+bitmap.h
+cconv.h
+cell.h
+cluster.h
+context.h
+decode.h
+dylink_type.h
+endian.h
+escape.h
+exec.h
+exec_context.h
+exec_debug.h
+expr.h
+expr_parser.h
+host_instance.h
+idalloc.h
+insn.h
+insn_impl.h
+insn_impl_base.h
+insn_impl_control.h
+insn_impl_fc.h
+insn_impl_tailcall.h
+insn_list_base.h
+insn_list_fc.h
+insn_list_noprefix.h
+insn_list_tailcall.h
+insn_macros.h
+insn_op.h
+insn_op_helpers.h
+insn_undef.h
+instance.h
+leb128.h
+list.h
+load_context.h
+lock.h
+mem.h
+module.h
+name.h
+nbio.h
+options.h
+platform.h
+report.h
+restart.h
+shared_memory_impl.h
+slist.h
+suspend.h
+timeutil.h
+type.h
+usched.h
+util.h
+validation.h
+valtype.h
+vec.h
+xlog.h
