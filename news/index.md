@@ -1,5 +1,14 @@
 # Changelog
 
+## nanowasm 0.0.0.9006
+
+- New vignette,
+  [`vignette("nanowasm")`](https://pedrobtz.github.io/nanowasm/articles/nanowasm.md),
+  covering the whole API and what the sandbox does and doesn’t
+  guarantee.
+- Undefined behaviour in the bundled interpreter, found with UBSan, is
+  fixed.
+
 ## nanowasm 0.0.0.9005
 
 - Modules can import R functions: wrap them with
