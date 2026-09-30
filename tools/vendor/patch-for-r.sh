@@ -116,6 +116,13 @@ apply exec.c \
   's/(\n\s+ctx->check_interval = CHECK_INTERVAL_DEFAULT;\n\s+exec_options_set_defaults\(&ctx->options\);\n)/$1        int nw_ret = VEC_PREALLOC(mctx, ctx->frames, 1);\n        nw_ret = VEC_PREALLOC(mctx, ctx->stack, 1);\n        nw_ret = VEC_PREALLOC(mctx, ctx->labels, 1);\n#if defined(TOYWASM_USE_SEPARATE_LOCALS)\n        nw_ret = VEC_PREALLOC(mctx, ctx->locals, 1);\n#endif\n        (void)nw_ret;\n/' \
   'preallocate the execution vectors in exec_context_init()'
 
+# glibc declares qsort()'s array non-null, and a module without exports has
+# none, so gcc's UBSan reports the call ("null pointer passed as argument
+# 1"). Sorting nothing is a no-op anyway.
+apply module.c \
+  's/(\n\s+)qsort\(m->exports, m->nexports, sizeof\(\*m->exports\), cmp_export\);/$1if (m->nexports > 0) {$1        qsort(m->exports, m->nexports, sizeof(*m->exports), cmp_export);$1}/' \
+  'qsort of no exports'
+
 # The cell helpers pass their pointers to memset/memcpy, which must not see
 # NULL even with a zero length.
 apply cell.c \

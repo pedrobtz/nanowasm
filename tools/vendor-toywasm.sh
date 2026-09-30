@@ -83,9 +83,15 @@ if command -v sha256sum >/dev/null 2>&1; then SHA_SUM="sha256sum"
 elif command -v shasum >/dev/null 2>&1; then SHA_SUM="shasum -a 256"
 else echo "vendor: no sha256 tool found" >&2; exit 1; fi
 
+# The local changes are part of what was vendored: a new substitution in
+# patch-for-r.sh or a new file in the list changes src/toywasm/ at the same
+# upstream commit, and the vendor guard requires the manifest to change with
+# it. So the manifest records a digest of both.
+LOCAL="$(cd "$PKG_ROOT" && cat tools/vendor/patch-for-r.sh tools/vendor/toywasm-files.txt \
+  | $SHA_SUM | cut -c1-16)"
 {
-  printf 'name\trepo\tref\tcommit\tversion\tdest\n'
-  printf 'toywasm\t%s\t%s\t%s\t%s\t%s\n' "$REPO" "$REF" "$COMMIT" "$VERSION" "src/toywasm"
+  printf 'name\trepo\tref\tcommit\tversion\tdest\tlocal_changes\n'
+  printf 'toywasm\t%s\t%s\t%s\t%s\t%s\t%s\n' "$REPO" "$REF" "$COMMIT" "$VERSION" "src/toywasm" "$LOCAL"
 } > "$PKG_ROOT/tools/vendor/manifest.tsv"
 
 ( cd "$PKG_ROOT" && { find src/toywasm -type f ! -name 'objects.mk' ! -name '*.o'; echo inst/TOYWASM_LICENSE; } \

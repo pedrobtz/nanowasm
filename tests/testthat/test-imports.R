@@ -211,8 +211,7 @@ test_that("non-local exits unwind through WebAssembly and leave it usable", {
 })
 
 test_that("Ctrl-C inside an import interrupts the call", {
-  skip_on_cran()
-  skip_on_os("windows")
+  skip_if_signals_unreliable()
   inst <- host_instance(env = list(effect = wasm_func(function() Sys.sleep(10))))
   system2("sh", c("-c", shQuote(sprintf("sleep 0.5; kill -INT %d", Sys.getpid()))), wait = FALSE)
   elapsed <- system.time(
