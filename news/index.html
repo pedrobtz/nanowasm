@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nanowasm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9006</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,45 +38,23 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9006" id="nanowasm-0009006">nanowasm 0.0.0.9006<a class="anchor" aria-label="anchor" href="#nanowasm-0009006"></a></h2>
-<ul><li>New vignette, <code><a href="../articles/nanowasm.html">vignette("nanowasm")</a></code>, covering the whole API and what the sandbox does and doesn’t guarantee.</li>
-<li>Undefined behaviour in the bundled interpreter, found with UBSan, is fixed.</li>
-</ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9005" id="nanowasm-0009005">nanowasm 0.0.0.9005<a class="anchor" aria-label="anchor" href="#nanowasm-0009005"></a></h2>
-<ul><li>Modules can import R functions: wrap them with <code><a href="../reference/wasm_func.html">wasm_func()</a></code> and pass them to <code>wasm_instantiate(imports = )</code>. Linking reports every missing or mismatched import at once. An R function with a <code>caller</code> argument can reach the calling instance’s memory through <code>caller$memory()</code>.</li>
-<li>An error in an imported R function signals a <code>nanowasm_host_error</code> whose <code>parent</code> is the original condition; interrupts, restarts and other jumps out of an import unwind the WebAssembly call safely.</li>
-<li>New example module <code>log.wasm</code>.</li>
-</ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9004" id="nanowasm-0009004">nanowasm 0.0.0.9004<a class="anchor" aria-label="anchor" href="#nanowasm-0009004"></a></h2>
-<ul><li>
-<code><a href="../reference/wasm_memory.html">wasm_memory()</a></code> gives access to an instance’s linear memory: <code><a href="../reference/wasm_memory.html">wasm_read()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_write()</a></code> for typed vectors, <code><a href="../reference/wasm_memory.html">wasm_read_string()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_write_string()</a></code> for UTF-8 strings, and <code><a href="../reference/wasm_memory.html">wasm_memory_size()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_memory_grow()</a></code>. Offsets are 0-based byte addresses and every access is bounds-checked.</li>
-<li>
-<code><a href="../reference/wasm_global.html">wasm_global()</a></code> reads an exported global, and <code>wasm_global&lt;-</code> sets a mutable one.</li>
-<li>
-<code><a href="../reference/wasm_limits.html">wasm_limits()</a></code> sets an instance’s memory, call-depth, value-stack and time limits, passed to <code>wasm_instantiate(limits = )</code> or set for all instances with <code>options(nanowasm.limits = )</code>. A call that runs too long signals <code>nanowasm_timeout</code>, and Ctrl-C interrupts a running call.</li>
-<li>New example module <code>sum.wasm</code>, with a bump allocator.</li>
-</ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9003" id="nanowasm-0009003">nanowasm 0.0.0.9003<a class="anchor" aria-label="anchor" href="#nanowasm-0009003"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.0.0.9000" id="nanowasm-0009000">nanowasm 0.0.0.9000<a class="anchor" aria-label="anchor" href="#nanowasm-0009000"></a></h2>
+<p>Development version, heading for the first release (0.1.0).</p>
 <ul><li>
 <code><a href="../reference/wasm_module.html">wasm_module()</a></code> loads and validates a WebAssembly module from a raw vector or a <code>.wasm</code> file; <code><a href="../reference/wasm_module.html">wasm_validate()</a></code> only checks it. <code><a href="../reference/wasm_exports.html">wasm_exports()</a></code> and <code><a href="../reference/wasm_exports.html">wasm_imports()</a></code> list what a module provides and needs.</li>
 <li>
-<code><a href="../reference/wasm_instantiate.html">wasm_instantiate()</a></code> creates an instance (running the start function), and <code><a href="../reference/wasm_instantiate.html">wasm_call()</a></code> or <code>inst$name(...)</code> calls its exported functions, converting <code>i32</code>, <code>i64</code>, <code>f32</code> and <code>f64</code> values to and from R.</li>
-<li>Traps, invalid modules and bad arguments signal classed conditions (<code>nanowasm_trap</code>, <code>nanowasm_validation_error</code>, <code>nanowasm_argument_error</code>, …); see <code>?nanowasm-conditions</code>.</li>
-<li>Example modules <code>add.wasm</code> and <code>fib.wasm</code> are installed in <code>extdata/</code>.</li>
+<code><a href="../reference/wasm_instantiate.html">wasm_instantiate()</a></code> creates an instance (running its start function), and <code><a href="../reference/wasm_instantiate.html">wasm_call()</a></code> or <code>inst$name(...)</code> calls its exported functions, converting <code>i32</code>, <code>i64</code>, <code>f32</code> and <code>f64</code> values to and from R.</li>
+<li>
+<code><a href="../reference/wasm_memory.html">wasm_memory()</a></code> gives access to an instance’s linear memory: <code><a href="../reference/wasm_memory.html">wasm_read()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_write()</a></code> for typed vectors, <code><a href="../reference/wasm_memory.html">wasm_read_string()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_write_string()</a></code> for UTF-8 strings, and <code><a href="../reference/wasm_memory.html">wasm_memory_size()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_memory_grow()</a></code>. <code><a href="../reference/wasm_global.html">wasm_global()</a></code> reads and sets exported globals.</li>
+<li>Modules can import R functions: wrap them with <code><a href="../reference/wasm_func.html">wasm_func()</a></code> and pass them to <code>wasm_instantiate(imports = )</code>. An R function with a <code>caller</code> argument can reach the calling instance’s memory.</li>
+<li>
+<code><a href="../reference/wasm_limits.html">wasm_limits()</a></code> bounds an instance’s memory, call depth, value stack and time per call; Ctrl-C interrupts a running call.</li>
+<li>Every failure is a classed condition (<code>nanowasm_trap</code>, <code>nanowasm_timeout</code>, <code>nanowasm_host_error</code>, …); see <code>?nanowasm-conditions</code>.</li>
+<li>Modules run in the bundled toywasm interpreter (v76.0.0), so no system WebAssembly runtime is needed.</li>
+<li>
+<code><a href="../articles/nanowasm.html">vignette("nanowasm")</a></code> walks through the API, and the example modules <code>add.wasm</code>, <code>fib.wasm</code>, <code>sum.wasm</code> and <code>log.wasm</code> are installed in <code>extdata/</code>.</li>
 </ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9002" id="nanowasm-0009002">nanowasm 0.0.0.9002<a class="anchor" aria-label="anchor" href="#nanowasm-0009002"></a></h2>
-<ul><li>Bundles the toywasm WebAssembly interpreter (v76.0.0). It is built with the package but not yet exposed through an R API.</li>
-</ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9001" id="nanowasm-0009001">nanowasm 0.0.0.9001<a class="anchor" aria-label="anchor" href="#nanowasm-0009001"></a></h2>
-<ul><li>Package skeleton. No user-facing functionality yet.</li>
-</ul></div>
-  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
-    </nav></aside></div>
+  </main></div>
 
 
     <footer><div class="pkgdown-footer-left">
