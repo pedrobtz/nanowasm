@@ -245,10 +245,10 @@ Should-have:
       expressible through R (i64 beyond 2^53, NaN payloads,
       references, non-function imports, text-format assertions). New
       failures, or known ones that start passing, make the run fail. (#40)
-- [ ] Vendoring fixes reported to toywasm (`code_size`, mingw `vasprintf`,
-      `__printflike`, NULL + 0, `qsort`, `host_instance.h` guard). Drafts are
-      in `.agents/upstream-reports.md`. Needs the maintainer's go-ahead,
-      since it posts to another project. (#41)
+- [x] Vendoring fixes reported to toywasm: PRs yamt/toywasm#359 (no-writer
+      build), #360 (mingw-w64), #361 (NULL to qsort/memset/memcpy) and issue
+      #362 (NULL + 0 on empty vectors). See `.agents/upstream-reports.md`.
+      (#41)
 
 **Exit:** see §3.
 
@@ -259,12 +259,17 @@ Should-have:
 - [ ] All must-have boxes in M0–M5 are ticked.
 - [ ] The exported functions match §1 exactly. No extra exports, and every
       one is documented.
-- [ ] `devtools::check()` 0/0/0 locally. `R CMD check --as-cran` clean on
-      win-builder (release + devel), mac-builder, and rhub (clang-UBSAN,
-      valgrind).
-- [ ] The `cran-extrachecks` skill has been run and its findings addressed.
+- [ ] `devtools::check()` 0/0/0 locally, and the r-actions `R-CMD-check`
+      full profile green: macOS, Windows and Linux runners (release and
+      oldrel) plus the CRAN-like clang23, ubuntu-clang and gcc16 containers.
+      These replace win-builder and mac-builder.
+- [ ] r-actions `native-checks` green: ASan/UBSan (gcc and clang),
+      valgrind, rchk, gctorture, LTO, `-fanalyzer`, and CRAN special checks.
+- [ ] `tools/spec/run.sh` and `tools/build-fixtures.sh` run locally with no
+      new failures and no diff.
+- [x] The `cran-extrachecks` skill has been run and its findings addressed.
 - [ ] Tarball under 5 MB, and check time on CRAN-like machines under 5 minutes.
-- [ ] `cran-comments.md` written: first submission, vendored toywasm credited,
+- [x] `cran-comments.md` written: first submission, vendored toywasm credited,
       no system requirements.
 - [ ] `usethis::use_version("minor")` → 0.1.0, commit, submit, and tag
       `v0.1.0` once CRAN accepts it. Then bump to 0.1.0.9000.
