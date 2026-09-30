@@ -20,16 +20,35 @@ and give it R functions as imports.
 pak::pak("pedrobtz/nanowasm")
 ```
 
-## Planned usage
+## Usage
 
 ``` r
 
 library(nanowasm)
 
-mod  <- wasm_module("fib.wasm")
-inst <- wasm_instantiate(mod, limits = wasm_limits(timeout = 5))
+path <- system.file("extdata", "fib.wasm", package = "nanowasm")
+mod  <- wasm_module(path)
+mod
+#> <nanowasm_module> 61 bytes
+#> exports:
+#>   fib  function  (i32) -> i32
+#> imports: none
+
+inst <- wasm_instantiate(mod)
 inst$fib(25L)
+#> [1] 75025
 ```
+
+Traps and other failures are classed R conditions:
+
+``` r
+
+tryCatch(inst$fib(1.5), nanowasm_argument_error = conditionMessage)
+#> [1] "Argument 1 of `fib` (i32) must be a whole number in [-2^31, 2^32)."
+```
+
+Linear memory access, resource limits and R functions as imports are on
+the way to the first release.
 
 ## Sandbox
 
@@ -43,5 +62,19 @@ This makes nanowasm a safe place to run *untrusted computations*. It is
 not a security boundary that has been audited against deliberately
 hostile code.
 
-# 
+# Package index
+
+## All functions
+
+- [`nanowasm-conditions`](https://pedrobtz.github.io/nanowasm/reference/nanowasm-conditions.md)
+  : Conditions signalled by nanowasm
+- [`wasm_exports()`](https://pedrobtz.github.io/nanowasm/reference/wasm_exports.md)
+  [`wasm_imports()`](https://pedrobtz.github.io/nanowasm/reference/wasm_exports.md)
+  : List a module's exports and imports
+- [`wasm_instantiate()`](https://pedrobtz.github.io/nanowasm/reference/wasm_instantiate.md)
+  [`wasm_call()`](https://pedrobtz.github.io/nanowasm/reference/wasm_instantiate.md)
+  : Instantiate a module and call its functions
+- [`wasm_module()`](https://pedrobtz.github.io/nanowasm/reference/wasm_module.md)
+  [`wasm_validate()`](https://pedrobtz.github.io/nanowasm/reference/wasm_module.md)
+  : Load a WebAssembly module
 

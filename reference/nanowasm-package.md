@@ -26,3 +26,8 @@ Useful links:
 Authors:
 
 - Pedro Baltazar <pedrobtz@gmail.com> \[copyright holder\]
+
+Other contributors:
+
+- Takashi Yamamoto (Author of the bundled toywasm interpreter)
+  \[copyright holder\]
