@@ -489,25 +489,33 @@ that API.
 
 ## 11. Testing strategy
 
+CI uses only reusable workflows from pedrobtz/r-actions. Checks that have no
+workflow there are scripts under `tools/` (excluded from the tarball), run
+locally before a release.
+
 - **Fixtures:** `.wat` sources and the compiled `.wasm` are both committed to
-  `tests/testthat/fixtures/`. `tools/build-fixtures.sh` regenerates them with
-  `wat2wasm` (wabt). CI does **not** need wabt. A CI job reruns the script and
-  fails if the `.wasm` files differ from the committed ones.
+  `tests/testthat/fixtures/` and `inst/extdata/`. `tools/build-fixtures.sh`
+  regenerates them with a pinned wabt, byte for byte, so after running it
+  `git status` shows any stale binary. Tests and users never need wabt.
 - **Unit tests** by area: loading/validation, introspection, value mapping
   edges (`INT_MIN`, `2^31`, `2^53`, NaN, `-0`), memory read/write/grow/OOB,
-  imports (linking, errors, the `caller` object), every condition class,
-  limits (deep recursion, memory bomb, infinite loop + timeout), lifetimes
-  (`gc()` in the middle of a call, `saveRDS` round trip, instance outliving
-  its module variable).
-- **Spec conformance (CI only, not shipped):** convert a subset of the
-  WebAssembly spec test suite with `wast2json`, and run it through a small
-  runner in `tools/`. It is excluded from the package tarball to keep the
-  size down and check time short.
-- **Examples/vignette:** use tiny `.wasm` files in `inst/extdata/` (for
-  example `add.wasm`, `fib.wasm`, and a small C-compiled string routine).
-  Checked in, with sources and build commands in `inst/extdata/README.md`.
-- **Sanitizers:** a CI job builds with `-fsanitize=address,undefined`, and
-  one runs tests under valgrind, before any CRAN submission.
+  imports (linking, errors, non-local exits, the `caller` object), every
+  condition class, limits (recursion, memory bombs, infinite loops,
+  timeouts, SIGINT on Unix), and lifetimes (`gc()`/`gctorture` during
+  calls, `saveRDS` round trip, finaliser order).
+- **Spec conformance (local):** `tools/spec/run.sh` converts 69 core files of
+  the WebAssembly spec test suite (pinned commit) with `wast2json` and runs
+  them through the R API with `tools/spec/runner.R`. 18,013 commands pass
+  and none fail; commands R can't express are skipped, with the reason.
+- **Fuzzing:** `tools/fuzz/harness.c` (decode, validate, instantiate, with
+  toywasm's real assertions), run by the r-actions `fuzz.yml` on each push
+  and weekly.
+- **Native checks** (r-actions `native-checks.yml`): ASan and UBSan with gcc
+  and clang, valgrind, LTO, gctorture, rchk, `-fanalyzer` and CRAN's special
+  checks. The SIGINT tests are skipped under valgrind, which mishandles R's
+  `siglongjmp` out of a signal-interrupted `select()`.
+- **Examples/vignette:** tiny `.wasm` files in `inst/extdata/`, with their
+  sources and build commands in `inst/extdata/README.md`.
 
 ## 12. Open questions
 
