@@ -19,8 +19,18 @@
 #'   and `detail` holds the interpreter's own message. Subclasses:
 #'   `nanowasm_stack_exhausted` (call or value stack limit) and
 #'   `nanowasm_out_of_bounds` (memory or table access out of bounds).
-#' * `nanowasm_memory_limit`: the interpreter could not allocate memory.
+#' * `nanowasm_memory_limit`: the instance reached its memory limit (see
+#'   [wasm_limits()]), or the interpreter could not allocate memory.
+#' * `nanowasm_timeout`: a call ran longer than its time limit. `elapsed` and
+#'   `limit` are in seconds.
+#' * `nanowasm_reentry_error`: an instance was called while already running a
+#'   call.
 #' * `nanowasm_runtime_error`: any other failure inside the interpreter.
+#'
+#' Out-of-bounds [wasm_read()] and [wasm_write()] calls signal
+#' `nanowasm_out_of_bounds` too, as a subclass of `nanowasm_argument_error`.
+#'
+#' Pressing Ctrl-C during a call signals R's usual `interrupt` condition.
 #'
 #' @name nanowasm-conditions
 #' @examples
@@ -44,6 +54,9 @@ nanowasm_abort <- function(class, message, ..., call = NULL) {
 # any other result through.
 nw_check <- function(res, call = NULL) {
   if (inherits(res, "nanowasm_failure")) {
+    if (identical(res$class, "nanowasm_interrupt")) {
+      nw_interrupt()
+    }
     # Not do.call(): it would evaluate `call`, re-running the failed call.
     cnd <- structure(
       c(list(message = res$message, call = call), res$fields),
@@ -52,6 +65,18 @@ nw_check <- function(res, call = NULL) {
     stop(cnd)
   }
   res
+}
+
+# A Ctrl-C arrived during a WebAssembly call. It was consumed while checking
+# for it, so re-signal it the way R does for R code: an `interrupt` condition
+# for handlers, then a jump back to the top level.
+nw_interrupt <- function() {
+  cnd <- structure(
+    list(message = "", call = NULL),
+    class = c("interrupt", "condition")
+  )
+  signalCondition(cnd)
+  invokeRestart("abort")
 }
 
 # The external pointer inside a nanowasm object, checked to be live.

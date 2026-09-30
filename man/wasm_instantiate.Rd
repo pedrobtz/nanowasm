@@ -5,12 +5,15 @@
 \alias{wasm_call}
 \title{Instantiate a module and call its functions}
 \usage{
-wasm_instantiate(module)
+wasm_instantiate(module, limits = NULL)
 
 wasm_call(instance, name, ...)
 }
 \arguments{
 \item{module}{A \code{nanowasm_module} from \code{\link[=wasm_module]{wasm_module()}}.}
+
+\item{limits}{Resource limits from \code{\link[=wasm_limits]{wasm_limits()}}. The default is
+\code{getOption("nanowasm.limits")}, or \code{wasm_limits()} if that is unset.}
 
 \item{instance}{A \code{nanowasm_instance} from \code{wasm_instantiate()}.}
 
@@ -49,9 +52,12 @@ result returns it as a length-one vector, and one with several results
 returns an unnamed list.
 
 If the WebAssembly code traps, the call signals a \code{nanowasm_trap} (see
-\link{nanowasm-conditions}). Calls are limited to 10,000 nested frames and
-1,000,000 value-stack cells, so runaway recursion signals a
-\code{nanowasm_stack_exhausted} error rather than exhausting memory.
+\link{nanowasm-conditions}). Every call runs under the instance's
+\code{\link[=wasm_limits]{wasm_limits()}}, so runaway recursion, memory growth or loops end in an
+error rather than exhausting the R session. Ctrl-C interrupts a running
+call.
+
+An instance runs one call at a time.
 }
 \examples{
 mod <- wasm_module(system.file("extdata", "fib.wasm", package = "nanowasm"))

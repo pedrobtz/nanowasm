@@ -25,9 +25,19 @@ between R and WebAssembly (\code{funcref}, \code{externref}, \code{v128}).
 and \code{detail} holds the interpreter's own message. Subclasses:
 \code{nanowasm_stack_exhausted} (call or value stack limit) and
 \code{nanowasm_out_of_bounds} (memory or table access out of bounds).
-\item \code{nanowasm_memory_limit}: the interpreter could not allocate memory.
+\item \code{nanowasm_memory_limit}: the instance reached its memory limit (see
+\code{\link[=wasm_limits]{wasm_limits()}}), or the interpreter could not allocate memory.
+\item \code{nanowasm_timeout}: a call ran longer than its time limit. \code{elapsed} and
+\code{limit} are in seconds.
+\item \code{nanowasm_reentry_error}: an instance was called while already running a
+call.
 \item \code{nanowasm_runtime_error}: any other failure inside the interpreter.
 }
+
+Out-of-bounds \code{\link[=wasm_read]{wasm_read()}} and \code{\link[=wasm_write]{wasm_write()}} calls signal
+\code{nanowasm_out_of_bounds} too, as a subclass of \code{nanowasm_argument_error}.
+
+Pressing Ctrl-C during a call signals R's usual \code{interrupt} condition.
 }
 \examples{
 mod <- wasm_module(system.file("extdata", "add.wasm", package = "nanowasm"))

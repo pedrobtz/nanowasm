@@ -149,19 +149,25 @@ Coverage of `R/` is ≥ 90%.
 
 Tracked in [milestone M3](https://github.com/pedrobtz/nanowasm/milestone/4) (issues #23–#28).
 
-- [ ] Memory API (design §4.4): all element types, bounds-checked,
-      endian-safe, strings.
-- [ ] `wasm_global()` get/set.
-- [ ] `wasm_limits()` + option: per-instance `mem_context` limit and
-      `exec_options`.
-- [ ] Timeouts and Ctrl-C through toywasm's user-interrupt restart (no
-      patch; see design §6.4). Timeout → `nanowasm_timeout`, Ctrl-C → `interrupt`.
-- [ ] Classes `nanowasm_stack_exhausted`, `nanowasm_memory_limit`,
-      `nanowasm_out_of_bounds`.
-- [ ] Hostile fixtures: infinite loop, unbounded recursion, `memory.grow`
-      bomb, huge table. Each fails fast with the right class and leaves R usable.
-- [ ] Example: sum a numeric vector through memory, using the module's own
-      `alloc`.
+- [x] Memory API (design §4.4): `wasm_memory()`, `wasm_read()`/`wasm_write()`
+      for raw/i8/u8/i16/u16/i32/u32/i64/u64/f32/f64, bounds-checked, endian-safe,
+      writes validated before any byte changes; `wasm_read_string()` /
+      `wasm_write_string()` (UTF-8, NUL-terminated); `wasm_memory_size(unit=)`,
+      `wasm_memory_grow()`. (#23)
+- [x] `wasm_global()` get/set. (#24)
+- [x] `wasm_limits()` + `nanowasm.limits` option: per-instance `mem_context`
+      limit (covers memories, tables and call stacks) and `exec_options`. (#25)
+- [x] Timeouts and Ctrl-C through toywasm's user-interrupt restart, with no
+      patch: `nanowasm_timeout`, and Ctrl-C → base `interrupt`. Ctrl-C is
+      tested automatically on Unix by sending SIGINT to the R process. (#26)
+- [x] Classes `nanowasm_stack_exhausted` (frames and stack cells),
+      `nanowasm_memory_limit`, `nanowasm_out_of_bounds` (traps and R-side
+      accesses), plus `nanowasm_reentry_error` (a busy flag per instance).
+- [x] Hostile fixtures: infinite loop and start function, unbounded
+      recursion (frames and stack cells), `memory.grow` bomb, grow-and-touch,
+      table growth, and a 100M-element table at instantiation. (#27)
+- [x] Example: `inst/extdata/sum.wasm` (bump allocator + `sum_f64`), used in
+      README, examples and tests. (#28)
 
 **Exit:** no fixture can crash, hang or exhaust the memory of the R session.
 Ctrl-C has been checked by hand on all three OSes.

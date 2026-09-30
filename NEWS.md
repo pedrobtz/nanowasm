@@ -1,3 +1,18 @@
+# nanowasm 0.0.0.9004
+
+* `wasm_memory()` gives access to an instance's linear memory:
+  `wasm_read()` / `wasm_write()` for typed vectors, `wasm_read_string()` /
+  `wasm_write_string()` for UTF-8 strings, and `wasm_memory_size()` /
+  `wasm_memory_grow()`. Offsets are 0-based byte addresses and every access
+  is bounds-checked.
+* `wasm_global()` reads an exported global, and `wasm_global<-` sets a
+  mutable one.
+* `wasm_limits()` sets an instance's memory, call-depth, value-stack and
+  time limits, passed to `wasm_instantiate(limits = )` or set for all
+  instances with `options(nanowasm.limits = )`. A call that runs too long
+  signals `nanowasm_timeout`, and Ctrl-C interrupts a running call.
+* New example module `sum.wasm`, with a bump allocator.
+
 # nanowasm 0.0.0.9003
 
 * `wasm_module()` loads and validates a WebAssembly module from a raw vector
