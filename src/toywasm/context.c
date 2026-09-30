@@ -97,7 +97,7 @@ resulttype_alloc(struct mem_context *mctx, uint32_t ntypes,
                 *resultp = (struct resulttype *)p; /* discard const */
                 return 0;
         }
-        struct resulttype *p;
+        struct resulttype *p = NULL;
         uint32_t i;
         int ret = resulttype_alloc0(mctx, ntypes, &p);
         if (ret != 0) {

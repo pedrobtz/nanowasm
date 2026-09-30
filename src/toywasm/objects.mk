@@ -10,7 +10,6 @@ TOYWASM_OBJECTS = \
   toywasm/endian.o \
   toywasm/escape.o \
   toywasm/exec.o \
-  toywasm/exec_debug.o \
   toywasm/exec_insn_subr.o \
   toywasm/expr.o \
   toywasm/expr_parser.o \

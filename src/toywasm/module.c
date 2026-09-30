@@ -130,7 +130,7 @@ cellidx_bytesize(uint32_t n, size_t *resultp)
 static int
 cellidx_alloc(struct mem_context *mctx, uint32_t n, uint16_t **resultp)
 {
-        size_t sz;
+        size_t sz = 0;
         int ret = cellidx_bytesize(n, &sz);
         if (ret != 0) {
                 return ret;
@@ -149,7 +149,7 @@ cellidx_free(struct mem_context *mctx, uint32_t n, uint16_t *p)
         if (p == NULL) {
                 return;
         }
-        size_t sz;
+        size_t sz = 0;
         int ret = cellidx_bytesize(n, &sz);
         assert(ret == 0);
         mem_free(mctx, p, sz);

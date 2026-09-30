@@ -64,7 +64,7 @@ Rules for the boundary:
 - Pinned to **v76.0.0** (`0462f000e110`). `tools/vendor/VENDORED` and
   `manifest.tsv` record the ref and commit.
 - Only `lib/` is vendored, and only the files the configuration needs:
-  33 `.c` and 56 `.h` files (`tools/vendor/toywasm-files.txt`, with the
+  32 `.c` and 56 `.h` files (`tools/vendor/toywasm-files.txt`, with the
   reasons for each exclusion). The installed package is about 320 KB.
 
 ### 3.2 Layout
@@ -141,7 +141,13 @@ default C standard is C17 or later.
 - There is no separate `nm` CI step: `R CMD check`'s "compiled code" check
   reports `abort`, `exit`, `printf`, `stdout`, `stderr`, `rand` and similar as
   a WARNING, and the r-actions check fails on warnings.
-- Windows: toywasm already handles `_WIN32`. `timeutil.c` declares no
+- Windows (Rtools gcc/mingw-w64): `report.c`'s `vasprintf` fallback clashes
+  with mingw's own and is skipped there, and `__printflike` uses
+  `gnu_printf` on mingw so `%zu` is not flagged against the MS runtime.
+- gcc `-Wmaybe-uninitialized`: two out-parameters (`module.c`, `context.c`)
+  are initialised. `exec_debug.c` is not vendored: nothing calls it, and it
+  casts a function pointer to `void *`, which gcc `-pedantic` rejects.
+- Windows otherwise: toywasm already handles `_WIN32`. `timeutil.c` declares no
   `clock_gettime`/`nanosleep` users there, and `exec.c` uses a fixed interrupt
   check interval of 1000 instructions instead of a time-adjusted one.
 - The target is CRAN's flags, `-Wall -pedantic` (and `-std=gnu23` on the

@@ -100,7 +100,7 @@ Tracked in [milestone M1](https://github.com/pedrobtz/nanowasm/milestone/2) (iss
 - [x] `tools/` does not ship in the tarball, following the sibling packages.
 - [x] Hand-written `src/toywasm_config.h`. `toywasm_version.h` is generated,
       and `toywasm_config.c` is not needed (only upstream's CLI uses it). (#7)
-- [x] Sources pruned to 33 `.c` / 56 `.h`, with no stubs needed. (#8)
+- [x] Sources pruned to 32 `.c` / 56 `.h`, with no stubs needed. (#8)
 - [x] `src/toywasm_shim.c` replaces `xlog.c` and `nbio.c` (all output
       discarded). (#9)
 - [x] `Makevars` / `Makevars.win`, `init.c` with registration, `useDynLib`,

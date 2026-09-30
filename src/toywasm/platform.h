@@ -146,7 +146,11 @@
 
 #if !defined(__printflike)
 #if __has_attribute(__format__)
+#if defined(__MINGW32__)
+#define __printflike(a, b) __attribute__((__format__(__gnu_printf__, a, b)))
+#else
 #define __printflike(a, b) __attribute__((__format__(__printf__, a, b)))
+#endif
 #else
 #define __printflike(a, b)
 #endif

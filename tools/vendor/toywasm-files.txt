@@ -12,6 +12,9 @@
 #   cluster.c suspend.c waitlist.c lock.c usched.c shared_memory.c
 #                   threads support
 #   module_writer.c TOYWASM_ENABLE_WRITER is off
+#   exec_debug.c    trace printers nothing in the library calls; also
+#                   casts a function pointer to void *, which -pedantic
+#                   rejects
 #   *.in            CMake templates; src/toywasm_config.h replaces them
 
 bitmap.c
@@ -23,7 +26,6 @@ dummy_host_func.c
 endian.c
 escape.c
 exec.c
-exec_debug.c
 exec_insn_subr.c
 expr.c
 expr_parser.c

@@ -72,6 +72,32 @@ apply module.c \
   's/#if defined\(TOYWASM_ENABLE_WRITER\)\n(\s+size_t code_size = 0;)\n#endif\n/$1\n/' \
   'code_size declaration in module_print_stats'
 
+# ---------------------------------------------------------------- Windows
+# report.c defines its own vasprintf() on _WIN32, but mingw-w64 (Rtools)
+# already provides one in <stdio.h>, so the build fails with "redefinition
+# of 'vasprintf'". Keep the fallback for other Windows toolchains only.
+apply report.c \
+  's/#if defined\(_WIN32\)\nint\nvasprintf/#if defined(_WIN32) && !defined(__MINGW32__)\nint\nvasprintf/' \
+  'vasprintf fallback on mingw'
+
+# On mingw, format(printf) means the Microsoft runtime's printf, which gcc
+# believes has no %zu, so every size_t in a log format warns (-Wformat).
+# The strings go through mingw's own C99-conforming vasprintf, so check
+# them as gnu_printf there.
+apply platform.h \
+  's/#define __printflike\(a, b\) __attribute__\(\(__format__\(__printf__, a, b\)\)\)/#if defined(__MINGW32__)\n#define __printflike(a, b) __attribute__((__format__(__gnu_printf__, a, b)))\n#else\n#define __printflike(a, b) __attribute__((__format__(__printf__, a, b)))\n#endif/' \
+  '__printflike on mingw'
+
+# ---------------------------------------------------- gcc -Wmaybe-uninitialized
+# gcc cannot see that these out-parameters are always written when the call
+# succeeds, and warns at -O2. Initialising them changes nothing at runtime.
+apply module.c \
+  's/(\n\s+)size_t sz;(\n\s+int ret = cellidx_bytesize\(n, &sz\);)/$1size_t sz = 0;$2/g' \
+  'cellidx_bytesize out-parameter'
+apply context.c \
+  's/(\n\s+)struct resulttype \*p;(\n\s+uint32_t i;\n\s+int ret = resulttype_alloc0\(mctx, ntypes, &p\);)/$1struct resulttype *p = NULL;$2/' \
+  'resulttype_alloc0 out-parameter'
+
 # ------------------------------------------------------------ end state
 # Guard against what the rewrites above exist to remove.
 if grep -n '#include <assert.h>' "$DEST"/*.c "$DEST"/*.h; then
