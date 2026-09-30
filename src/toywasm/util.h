@@ -17,7 +17,7 @@ int __must_check array_shrink(struct mem_context *ctx, void **p,
 
 #define ARRAY_EXTEND(ctx, a, osz, sz)                                         \
         array_extend((ctx), (void **)&(a), sizeof(*a), osz, sz)
-#define ARRAY_FOREACH(p, a, sz) for (p = a; p < a + sz; p++)
+#define ARRAY_FOREACH(p, a, sz) for (p = a; p != NULL && p < a + sz; p++)
 
 #define ZERO(p) memset(p, 0, sizeof(*p))
 

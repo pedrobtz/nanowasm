@@ -1491,6 +1491,13 @@ exec_context_init(struct exec_context *ctx, struct instance *inst,
         ctx->report = &ctx->report0;
         ctx->check_interval = CHECK_INTERVAL_DEFAULT;
         exec_options_set_defaults(&ctx->options);
+        int nw_ret = VEC_PREALLOC(mctx, ctx->frames, 1);
+        nw_ret = VEC_PREALLOC(mctx, ctx->stack, 1);
+        nw_ret = VEC_PREALLOC(mctx, ctx->labels, 1);
+#if defined(TOYWASM_USE_SEPARATE_LOCALS)
+        nw_ret = VEC_PREALLOC(mctx, ctx->locals, 1);
+#endif
+        (void)nw_ret;
 }
 
 void

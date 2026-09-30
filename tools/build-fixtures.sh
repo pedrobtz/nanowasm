@@ -3,9 +3,10 @@
 #
 # Usage: tools/build-fixtures.sh
 #
-# The .wasm files are committed, so neither tests nor users need wabt. CI
-# reruns this script and fails if the committed binaries differ from their
-# sources. wabt is pinned so the output is byte-identical across machines:
+# The .wasm files are committed, so neither tests nor users need wabt. After
+# editing a .wat, rerun this and commit both files; `git status` then shows
+# any binary that was out of date. wabt is pinned so the output is
+# byte-identical across machines:
 # a wat2wasm on PATH is used only if it is that version, otherwise the npm
 # build of the same release runs through npx.
 #

@@ -6,10 +6,10 @@ test_that("a trapping start function fails instantiation", {
   expect_error(fixture_instance("start-trap"), class = "nanowasm_trap")
 })
 
-test_that("modules with imports can't be instantiated yet", {
-  err <- expect_error(fixture_instance("imports"), class = "nanowasm_link_error")
-  expect_identical(err$missing$name, c("log", "mem", "g", "tbl"))
-  expect_match(conditionMessage(err), "`env.log`, `env.mem`, `js.g`, `js.tbl`")
+test_that("modules with missing imports can't be instantiated", {
+  err <- expect_error(fixture_instance("host"), class = "nanowasm_link_error")
+  expect_identical(err$missing$name, c("add", "pair", "effect", "twice"))
+  expect_match(conditionMessage(err), "`env.add`, `env.pair`, `env.effect`, `math.twice`")
 })
 
 test_that("wasm_instantiate() needs a module", {

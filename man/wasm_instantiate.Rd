@@ -5,12 +5,17 @@
 \alias{wasm_call}
 \title{Instantiate a module and call its functions}
 \usage{
-wasm_instantiate(module, limits = NULL)
+wasm_instantiate(module, imports = list(), limits = NULL)
 
 wasm_call(instance, name, ...)
 }
 \arguments{
 \item{module}{A \code{nanowasm_module} from \code{\link[=wasm_module]{wasm_module()}}.}
+
+\item{imports}{The module's imports: a list, named by import module, of
+lists, named by field, of R functions wrapped with \code{\link[=wasm_func]{wasm_func()}}. Every
+import must be provided, with a matching signature; extra entries are
+ignored. See \code{\link[=wasm_imports]{wasm_imports()}} for what a module needs.}
 
 \item{limits}{Resource limits from \code{\link[=wasm_limits]{wasm_limits()}}. The default is
 \code{getOption("nanowasm.limits")}, or \code{wasm_limits()} if that is unset.}

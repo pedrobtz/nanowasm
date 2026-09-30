@@ -12,6 +12,8 @@ In the package's source repository, `tools/build-fixtures.sh` rebuilds all of
 them.
 
 | File       | Exports                                                   |
-|------------|-----------------------------------------------------------|
+|------------|------------------------------------------------------------|
 | `add.wasm` | `add(i32, i32) -> i32`, `add_f64(f64, f64) -> f64`         |
 | `fib.wasm` | `fib(i32) -> i32`, the naive recursive Fibonacci function |
+| `sum.wasm` | `alloc(i32) -> i32` (a bump allocator), `sum_f64(i32, i32) -> f64`, the global `heap_top`, and `memory` |
+| `log.wasm` | `greet()`, which calls the import `env.log(ptr, len)` with a string in its `memory` |

@@ -32,6 +32,10 @@
 #' An instance runs one call at a time.
 #'
 #' @param module A `nanowasm_module` from [wasm_module()].
+#' @param imports The module's imports: a list, named by import module, of
+#'   lists, named by field, of R functions wrapped with [wasm_func()]. Every
+#'   import must be provided, with a matching signature; extra entries are
+#'   ignored. See [wasm_imports()] for what a module needs.
 #' @param limits Resource limits from [wasm_limits()]. The default is
 #'   `getOption("nanowasm.limits")`, or `wasm_limits()` if that is unset.
 #' @param instance A `nanowasm_instance` from `wasm_instantiate()`.
@@ -45,7 +49,7 @@
 #' inst <- wasm_instantiate(mod)
 #' inst$fib(20L)
 #' wasm_call(inst, "fib", 10L)
-wasm_instantiate <- function(module, limits = NULL) {
+wasm_instantiate <- function(module, imports = list(), limits = NULL) {
   call <- sys.call()
   if (is.null(limits)) limits <- default_limits()
   if (!inherits(limits, "nanowasm_limits")) {
@@ -63,21 +67,8 @@ wasm_instantiate <- function(module, limits = NULL) {
     )
   }
   ptr <- nw_ptr(module, call)
-  imports <- module$imports
-  if (nrow(imports) > 0) {
-    nanowasm_abort(
-      "nanowasm_link_error",
-      paste0(
-        "The module needs ", nrow(imports), " import",
-        if (nrow(imports) > 1) "s", ", but none were given: ",
-        paste0("`", imports$module, ".", imports$name, "`", collapse = ", "),
-        ". Imports are not supported yet."
-      ),
-      missing = imports,
-      call = call
-    )
-  }
-  inst <- nw_check(.Call(nw_instantiate, ptr, unclass(limits)), call)
+  funcs <- link_imports(module, imports, call)
+  inst <- nw_check(.Call(nw_instantiate, ptr, unclass(limits), unname(funcs)), call)
   structure(
     list(ptr = inst, module = module, limits = limits),
     class = "nanowasm_instance"
