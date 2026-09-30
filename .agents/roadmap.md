@@ -6,6 +6,9 @@ the end.
 
 How to use this file:
 
+- CI uses only reusable workflows from pedrobtz/r-actions. Checks without
+  one there (fixture rebuild, spec tests) are scripts under `tools/`, run
+  locally before a release.
 - Milestones run in order. Each one ends in a mergeable state with CI green
   (quick profile on every PR; add the `full-ci` label to the PR that closes
   a milestone).
@@ -122,8 +125,9 @@ Hit it first. If it needs more than small patches, raise it before M2.
 Tracked in [milestone M2](https://github.com/pedrobtz/nanowasm/milestone/3) (issues #14–#22).
 
 - [x] Fixture pipeline: `.wat` + committed `.wasm`, `tools/build-fixtures.sh`
-      (wabt 1.0.37 through npx if not installed), and a `fixtures.yml` CI job
-      that fails if the committed binaries differ from their sources. (#14)
+      (wabt 1.0.37 through npx if not installed). CI uses only
+      pedrobtz/r-actions workflows, so the rebuild check runs locally
+      (reproducible byte for byte), not in CI. (#14)
 - [x] `wasm_module()` / `wasm_validate()`, keeping a private copy of the
       bytes, plus the `nanowasm.max_module_size` limit (64 MB). (#15)
 - [x] `wasm_exports()` / `wasm_imports()` / `print` / signature formatting.

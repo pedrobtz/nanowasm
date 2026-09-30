@@ -86,8 +86,7 @@ test_that("R stays usable after every limit", {
 })
 
 test_that("Ctrl-C interrupts a running call", {
-  skip_on_cran()
-  skip_on_os("windows")
+  skip_if_signals_unreliable()
   # The timeout is only a backstop, so a broken interrupt fails rather than
   # hangs.
   inst <- wasm_instantiate(wasm_module(fixture("hostile")), limits = wasm_limits(timeout = 10))
