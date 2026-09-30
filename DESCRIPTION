@@ -1,14 +1,24 @@
 Package: nanowasm
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Title: Run 'WebAssembly' Modules with a Bundled Interpreter
+Version: 0.0.0.9001
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+    person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph"))
+Description: Loads 'WebAssembly' modules from raw vectors or files and calls
+    their exported functions from R. Modules run in a bundled interpreter, so
+    no system 'WebAssembly' runtime is needed. R vectors can be copied into
+    and out of a module's linear memory, and R functions can be supplied as
+    imports. Modules are sandboxed: they have no access to files, network or
+    environment beyond the imports they are given, and traps, stack
+    exhaustion, memory growth and timeouts are reported as classed R
+    conditions.
 License: MIT + file LICENSE
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 8.0.0
+URL: https://pedrobtz.github.io/nanowasm/, https://github.com/pedrobtz/nanowasm
+BugReports: https://github.com/pedrobtz/nanowasm/issues
+Depends: 
+    R (>= 4.3)
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-URL: https://pedrobtz.github.io/nanowasm/
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0

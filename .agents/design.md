@@ -1,0 +1,475 @@
+# nanowasm design
+
+Status: draft, 2026-09-30. Nothing here is implemented yet; the phase plan is in
+[roadmap.md](roadmap.md). Where this document says "decision", treat it as the
+default until an implementation finding changes it. When that happens, update
+this file in the same PR.
+
+## 1. Goals and non-goals
+
+**Goals**
+
+- Load a WebAssembly module from a raw vector or a file and call its exports
+  from R.
+- No system dependencies: the interpreter (toywasm) is vendored C, built by
+  `R CMD INSTALL` with the standard toolchain, on Linux, macOS and Windows
+  (Rtools).
+- Move data between R vectors and a module's linear memory through a small,
+  explicit API.
+- Let R functions be imported by a module, so it can call back into R.
+- Sandboxed by default. A module has no filesystem, network, clock, randomness
+  or environment access unless an import grants it.
+- Every failure mode (validation, linking, traps, stack exhaustion, memory
+  limits, timeouts, errors in R callbacks) surfaces as a classed R condition.
+- Suitable for CRAN.
+
+**Non-goals (for now)**
+
+- Speed. toywasm is an interpreter that runs the binary in place. It is
+  small and portable, and slower than JIT runtimes. If users need
+  throughput, the answer is a different backend package, not tuning this one.
+- WASI as a default. A minimal, opt-in WASI subset may come later (§10).
+- Threads, shared memory, the component model and dynamic linking.
+- Compiling to wasm. Users bring `.wasm` files built with Emscripten,
+  wasi-sdk, Rust or `wat2wasm`.
+
+## 2. Architecture overview
+
+```
+R API (R/)            wasm_module() wasm_instantiate() wasm_call() wasm_read() ...
+   │  .Call
+Glue layer (src/*.c)  type marshalling, external pointers, host-func trampoline,
+   │                  limits, interrupt/timeout hook, error → condition mapping
+toywasm (src/toywasm/) vendored, pinned, lightly patched; never calls R directly
+```
+
+Rules for the boundary:
+
+1. **toywasm never sees R.** Only the glue layer includes `Rinternals.h`.
+   toywasm files compile without R headers, apart from the logging shim (§3.3).
+2. **No R longjmp crosses a toywasm frame.** R errors, interrupts and other
+   non-local exits must not unwind through the interpreter. Every place where
+   R code runs while toywasm is on the stack is guarded (§6.3).
+3. **The glue layer uses the C API that R documents** (no non-API entry points;
+   R CMD check reports these as of R 4.5). Plain C with `.Call`, no Rcpp or
+   cpp11, which keeps the package free of compile-time dependencies.
+
+## 3. Vendoring toywasm
+
+### 3.1 Source and pinning
+
+- Upstream: https://github.com/yamt/toywasm, by YAMAMOTO Takashi.
+  BSD-2-Clause, which is compatible with the package's MIT licence.
+- Pin to a release tag. Candidate: **v76.0.0** (`0462f000e110`). The pinned tag
+  and commit go in `src/toywasm/VERSION`.
+- Only `lib/` is vendored, and only the files the chosen configuration needs.
+  That is about 22k lines of C, about 1 MB, before pruning. Not vendored:
+  `cli/`, `libwasi*/`, `libdyld/`, `examples/`, tests, CMake.
+
+### 3.2 Layout
+
+```
+src/
+  toywasm/               vendored lib/ subset, upstream file names unchanged
+    VERSION              tag + commit + date vendored
+    toywasm_config.h     hand-written (replaces CMake's configure_file)
+    toywasm_config.c     hand-written from toywasm_config.c.in
+    toywasm_version.h    hand-written
+  init.c                 R_registerRoutines, R_useDynamicSymbols(FALSE)
+  module.c instance.c call.c memory.c host.c conditions.c limits.c
+  nanowasm.h
+  Makevars / Makevars.win
+tools/
+  vendor-toywasm.sh      fetch tag, copy the file list, apply patches, write VERSION
+  toywasm-files.txt      the explicit list of vendored files
+  toywasm-patches/*.patch
+inst/COPYRIGHTS          toywasm copyright + full BSD-2-Clause text
+```
+
+Re-vendoring must be scripted (`tools/vendor-toywasm.sh <tag>`) and
+reproducible. Local changes live only as patches in `tools/toywasm-patches/`,
+and each patch has a header saying why it exists and whether it has been
+offered upstream.
+
+### 3.3 Build configuration
+
+CMake is not available (or wanted) at install time, so `toywasm_config.h` is
+fixed by hand. Starting configuration:
+
+| Setting | Value | Why |
+|---|---|---|
+| `TOYWASM_ENABLE_WASM_THREADS`, `_WASI*`, `_DYLD*`, `USE_USER_SCHED` | off | Out of scope. They pull in pthreads/POSIX I/O and break the Windows build. |
+| `TOYWASM_ENABLE_WASM_SIMD` | off in v0.1 | Adds a lot of code. Enable in a later phase when a user needs it (Emscripten `-msimd128`). |
+| `TOYWASM_ENABLE_WASM_EXCEPTION_HANDLING` | off in v0.1 | Same reasoning. Revisit for C++/Emscripten modules. |
+| `TOYWASM_ENABLE_WASM_TAILCALL`, `_EXTENDED_CONST`, `_MULTI_MEMORY` | on | Cheap, and modern toolchains emit them. |
+| `TOYWASM_ENABLE_WASM_NAME_SECTION` | on | Function names in trap messages. |
+| `TOYWASM_ENABLE_HEAP_TRACKING` | **on** | Required for the memory limit (§7). |
+| `TOYWASM_ENABLE_TRACING*`, `TOYWASM_ENABLE_WRITER` | off | Debug-only. |
+| `TOYWASM_USE_SEPARATE_EXECUTE`, jump/locals caches | upstream defaults | Tune later with benchmarks. |
+
+Makevars sets `-I.` / `-Itoywasm`, defines `NDEBUG`, and lists `OBJECTS`
+explicitly. The package requires C11 because toywasm uses `_Atomic` and
+`<stdatomic.h>`. R ≥ 4.3 compiles C as C17 by default, so the package needs
+`R (>= 4.3)`, or `SystemRequirements: C11`.
+
+**CRAN hygiene patches.** Compiled code must not write to stdout or stderr,
+call `abort`/`exit`, or otherwise terminate R.
+
+- `xlog.c`: replace it with a shim that discards output, or routes it to
+  `REprintf` when `options(nanowasm.debug = TRUE)`. This is the only toywasm
+  file allowed to include R headers.
+- `nbio.c` (stdio helpers) and `fileio.c` (file loading): exclude, and load
+  bytes from R instead.
+- `assert()` calls are compiled out with `NDEBUG`. A CI step runs `nm` on the
+  built `.so`/`.dll` and fails if `abort`, `exit`, `printf`, `puts`, `stdout`,
+  `stderr` or `rand` are referenced.
+- `lock.c`, `waitlist.c`, `shared_memory.c`, `usched.c` and `cluster.c` should
+  be unnecessary with threads off. Confirm by compiling without them, and add
+  small stubs as patches only if something still links against them.
+- `timeutil.c` uses `clock_gettime`. Check that it builds on Rtools/mingw.
+  If it doesn't, patch it to use the glue layer's clock.
+
+## 4. R-facing API
+
+Exported functions use a `wasm_` prefix. Objects are S3 classes wrapping
+external pointers.
+
+### 4.1 Modules
+
+```r
+mod <- wasm_module(x)              # x: raw vector, or path to a .wasm file
+wasm_validate(x)                   # TRUE, or a nanowasm_validation_error
+wasm_exports(mod)                  # data.frame: name, kind, type ("(i32, i32) -> i32")
+wasm_imports(mod)                  # data.frame: module, name, kind, type
+print(mod)                         # size, #imports, #exports, first few signatures
+```
+
+A `nanowasm_module` is immutable and can be instantiated any number of
+times. It is not serialisable. `saveRDS()` gives a dead pointer, which is
+detected and reported (§5).
+
+### 4.2 Instances and calls
+
+```r
+inst <- wasm_instantiate(mod, imports = list(), limits = wasm_limits())
+wasm_call(inst, "add", 1L, 2L)     # low-level, by export name
+inst$add(1L, 2L)                   # sugar: `$.nanowasm_instance` returns a closure
+names(inst)                        # export names, for tab completion
+wasm_global(inst, "counter"); wasm_global(inst, "counter") <- 3L
+```
+
+- `wasm_instantiate()` links imports, allocates memories and tables, runs
+  data/element initialisation and the start function. The start function
+  runs under `limits`, so it can trap like any call.
+- Calls are **scalar**, following Wasm semantics: one value per parameter,
+  checked against the signature (arity, type, range). Vectorised calls are
+  deliberately not provided. Bulk data goes through linear memory (§4.4),
+  which is both the fast path and the honest one.
+- Results: no result → `invisible(NULL)`; one result → a length-1 vector;
+  several results → an unnamed list.
+- `wasm_call()` does not re-enter: while an instance is running, a host
+  callback that calls back into *the same instance* gets an error in v0.1.
+  Re-entrancy is an open question (§12).
+
+### 4.3 Value mapping
+
+| Wasm | R argument accepted | R result | Notes |
+|---|---|---|---|
+| `i32` | integer; double that is whole and in `[-2^31, 2^32)` | integer | Values ≥ 2^31 are taken as the unsigned bit pattern. `NA_integer_` *is* the bit pattern of `INT_MIN`, so it round-trips as −2147483648 in Wasm. Documented rather than special-cased. |
+| `i64` | double that is whole and exactly representable (`|x| ≤ 2^53`) | double | Results outside ±2^53 raise `nanowasm_precision_error` instead of silently rounding. A lossless mode is an open question (§12). |
+| `f32` | double (rounded to single) | double | |
+| `f64` | double | double | NaN payloads are not guaranteed to be preserved (R's `NA_real_` is a NaN payload). |
+| `funcref`/`externref` | not supported in v0.1 | — | Any export or import that uses them gets a clear "unsupported" error. |
+| `v128` | not supported | — | Only relevant once SIMD is enabled, and even then not at the boundary. |
+
+Logical arguments are rejected rather than coerced, and `NA_real_` for a float
+parameter passes through as a NaN. Length-0 or length > 1 arguments are errors.
+
+### 4.4 Linear memory
+
+```r
+mem <- wasm_memory(inst, name = NULL)          # NULL: the single exported memory, or error if ambiguous
+wasm_memory_size(mem)                          # bytes (and pages attr)
+wasm_memory_grow(mem, pages)                   # old size in pages, or error at limit
+wasm_read(mem, offset, n, type = "u8")         # n elements, not bytes
+wasm_write(mem, offset, x, type = "u8")        # invisibly returns the next offset
+wasm_read_string(mem, offset, n = NULL)        # n = NULL: NUL-terminated; UTF-8, re-encoded to native
+wasm_write_string(mem, offset, x, nul = TRUE)
+```
+
+- `type`: `"raw"`, `"i8"`, `"u8"`, `"i16"`, `"u16"`, `"i32"`, `"u32"`, `"i64"`,
+  `"u64"`, `"f32"`, `"f64"`. R result types are raw, integer or double, as in
+  §4.3. `u32`/`i64`/`u64` read as double. Writes range-check.
+- Offsets are 0-based byte addresses, matching Wasm pointers. This is the one
+  place the package is deliberately not 1-based, and the docs say so up front.
+- Every access is bounds-checked against the *current* memory size and gives
+  `nanowasm_out_of_bounds` on failure. The data pointer is re-fetched on every
+  access, because `memory.grow` can reallocate it.
+- Endianness: Wasm memory is little-endian. Use `memcpy` plus a byte swap on
+  big-endian hosts, so correctness never depends on the host.
+- A `nanowasm_memory` object holds a reference to its instance, so the instance
+  stays alive while a memory handle exists.
+
+**No allocator is assumed.** Wasm has no standard `malloc`. Users call the
+module's own allocator export (for example `inst$malloc(n)`) and then
+`wasm_write()`. A future helper (`wasm_with_buffer()`) may wrap the common
+"export named `malloc`/`free`" convention, but it will stay opt-in.
+
+### 4.5 Host functions (imports)
+
+```r
+log_fn <- wasm_func(function(x) { message(x); invisible() },
+                    params = "i32", results = character())
+inst <- wasm_instantiate(mod, imports = list(env = list(log_i32 = log_fn)))
+```
+
+- `imports` is a two-level named list: module name, then field name. Leaves are
+  `nanowasm_func` (from `wasm_func()`), or a `nanowasm_memory`/global to share
+  (a later phase).
+- The signature is declared explicitly and checked against the module's import
+  at link time. A mismatch is a `nanowasm_link_error` that shows both
+  signatures. Missing imports are link errors that list every missing
+  `module.name` at once.
+- Arguments arrive converted per §4.3. The return value is converted back and
+  checked: wrong type, length or range becomes a `nanowasm_host_error`.
+- If the R function has a formal named `caller`, it receives a
+  `nanowasm_caller` whose `memory()` gives access to the calling instance's
+  memory. The caller object is invalidated when the host call returns; later
+  use gives an error. This covers the common "module passes a pointer and a
+  length" pattern (logging strings, returning buffers).
+
+## 5. Object model and lifetimes
+
+| R class | External pointer to | `prot` slot keeps alive |
+|---|---|---|
+| `nanowasm_module` | `struct module` + a `mem_context` | the **raw vector of the binary**. toywasm runs the binary in place, so the module points into these bytes. |
+| `nanowasm_instance` | glue struct: `instance`, `import_object` chain, host-binding array, `mem_context`, limits | list(module extptr, host function closures) |
+| `nanowasm_memory` | `meminst` (borrowed) | the instance extptr |
+| `nanowasm_func` | nothing (pure R object: function + signature) | — |
+
+- Finalisers (`R_RegisterCFinalizerEx(..., onexit = TRUE)`) destroy the
+  instance before the module. The `prot` chain guarantees the order: an
+  instance references its module, so the module cannot be collected first.
+- Every entry point checks for a NULL address (after `saveRDS`/`readRDS` or
+  after an explicit `wasm_close()`) and raises `nanowasm_invalid_object`.
+- R-side objects are thin S3 lists (`list(ptr = <extptr>, ...)`, with a class)
+  so they can carry cached metadata like the export table, without extra C
+  calls.
+
+## 6. Execution
+
+### 6.1 Call path
+
+`wasm_call()` → `.Call(C_nanowasm_call, inst, name, args)`:
+
+1. Resolve the export (cached per instance: name → funcidx and `functype`).
+2. Convert and check the arguments into `struct val[]`. All R allocation and
+   possible R errors happen **here, before** toywasm is entered.
+3. Initialise an `exec_context` on the instance, apply the limits (§7), install
+   the interrupt pointer and hook (§6.4).
+4. `instance_execute_func()` → `instance_execute_handle_restart()` loop.
+5. `exec_context_clear()`, always, on every path.
+6. Map the return code (§8). If it succeeded, convert the results into R.
+
+### 6.2 Host-call trampoline
+
+toywasm host functions have no per-function user data, but each imported
+`funcinst` points at its own `struct host_instance`. The glue layer allocates
+one binding per imported function:
+
+```c
+struct nw_host_binding {
+    struct host_instance hi;   /* first member: container_of(hi) recovers the binding */
+    SEXP fn;                   /* R closure, protected via the instance's prot list */
+    const struct functype *ft;
+    struct nw_instance *owner;
+};
+```
+
+A single C trampoline (`HOST_FUNC_DECL`) recovers the binding, converts
+`cells` → R values, calls R safely (§6.3), and converts the result back into
+`cells`.
+
+### 6.3 Keeping R's longjmps out of the interpreter
+
+Two layers:
+
+1. **R errors are caught in R.** `wasm_func()` wraps the user function as
+   `function(...) tryCatch(list(TRUE, f(...)), error = function(e) list(FALSE, e))`.
+   An error comes back as a value. The trampoline stores the condition on the
+   instance and returns `host_func_trap()`. After toywasm has unwound, the call
+   raises `nanowasm_host_error` with `parent = <original condition>`.
+2. **Everything else (interrupts, `invokeRestart`, `return()` from an outer
+   frame) is caught in C.** The eval runs under
+   `R_UnwindProtect(eval_fn, data, clean_fn, data, token)`. `clean_fn` does a
+   `longjmp` back into the trampoline, which is the pattern cpp11 uses. The
+   trampoline records the pending unwind and traps. After
+   `exec_context_clear()`, the `.Call` entry calls `R_ContinueUnwind(token)`,
+   so the original jump carries on with the interpreter already cleaned up.
+
+The trampoline and the `.Call` entry are the only places with `setjmp`, and a
+test covers each of the three exits: normal, R error, and interrupt/restart.
+
+### 6.4 Interrupts and timeouts
+
+toywasm's interpreter polls `check_interrupt()` periodically (time-based) and
+stops with the restartable `ETOYWASMUSERINTERRUPT` when `*ctx->intrp != 0`.
+Nothing sets that flag without a second thread, and threads are off the table
+for CRAN and Windows. So:
+
+- **Patch (small, to be offered upstream):** an optional embedder callback,
+  `ctx->check_interrupt_hook(ctx, arg)`, called from `check_interrupt()`.
+- The glue hook:
+  - checks the wall-clock deadline (`limits$timeout`);
+  - checks for a pending Ctrl-C without longjmp: `R_ToplevelExec()` around
+    `R_CheckUserInterrupt()`, which returns FALSE if an interrupt was pending
+    (the standard idiom);
+  - either one sets the flag. The call then aborts (it is not resumed),
+    cleans up, and raises `nanowasm_timeout`, or for Ctrl-C re-raises a
+    base `interrupt` condition so `tryCatch(interrupt = )` works as users
+    expect.
+- If the upstream check interval turns out too coarse for a responsive Ctrl-C,
+  tune it in the config rather than polling from the dispatch loop.
+
+After an aborted call, the instance's globals and memory may be partly
+updated, as they would be after a trap. The instance stays usable. The docs
+say it is the user's job to decide whether its state can be trusted.
+
+## 7. Limits
+
+```r
+wasm_limits(
+  memory     = 256 * 2^20,  # bytes toywasm may allocate for this instance (memories, tables, stacks)
+  frames     = 10000L,      # max call depth            -> exec_options.max_frames
+  stack      = 1e6,         # max value-stack cells     -> exec_options.max_stackcells
+  timeout    = Inf          # seconds of wall-clock time per call (incl. start function)
+)
+```
+
+- **memory** uses `mem_context_setlimit()` (heap tracking) on a per-instance
+  `mem_context`. It covers memory growth *and* anything else a hostile module
+  could make toywasm allocate, which is a stronger guarantee than capping
+  memory pages alone. `memory.grow` past the limit returns −1 to the module,
+  as the spec requires. An allocation failure elsewhere traps and becomes
+  `nanowasm_memory_limit`.
+- **frames/stack** turn deep recursion into the `TRAP_TOO_MANY_FRAMES` /
+  `TRAP_TOO_MANY_STACKCELLS` traps, reported as
+  `nanowasm_stack_exhausted`. toywasm does not recurse on the C stack for
+  Wasm→Wasm calls, so the C stack is not the limit. Host callbacks are the
+  exception: each Wasm→R→Wasm round trip uses real C stack, which is one more
+  reason to forbid re-entry in v0.1.
+- Defaults come from `getOption("nanowasm.limits")` when set.
+- Module *loading* has limits too: `wasm_module()` rejects inputs over
+  `getOption("nanowasm.max_module_size", 64 MB)` before parsing, and parsing
+  uses its own `mem_context` limit.
+
+## 8. Conditions
+
+All conditions are built with base R (`structure(class = c(...,
+"nanowasm_error", "error", "condition"))`), so there are no dependencies. Every
+one carries `message`, `call`, and fields useful to programs.
+
+```
+nanowasm_error
+├── nanowasm_invalid_object        dead/closed external pointer
+├── nanowasm_validation_error      $offset (byte offset in the binary), when known
+├── nanowasm_link_error            $missing (data.frame), $mismatch
+├── nanowasm_argument_error        wrong arity/type/range at the R→Wasm boundary
+│   └── nanowasm_precision_error   i64 value not representable as double
+├── nanowasm_trap                  $trap_id (e.g. "unreachable"), $function (name if known)
+│   ├── nanowasm_stack_exhausted   TRAP_TOO_MANY_FRAMES / _STACKCELLS
+│   ├── nanowasm_out_of_bounds     memory/table/data/element OOB, incl. wasm_read/wasm_write
+│   └── nanowasm_memory_limit      allocation refused by the mem_context limit
+├── nanowasm_timeout               $elapsed, $limit
+└── nanowasm_host_error            $parent = the R condition raised in the host function
+```
+
+- `trap_id` is a lower-snake string from toywasm's `enum trapid`
+  (`div_by_zero`, `integer_overflow`, `out_of_bounds_memory_access`,
+  `unreachable`, `call_indirect_*`, `invalid_conversion_to_integer`, …),
+  mapped in one table in `conditions.c`.
+- Conditions are built in C only as data (class, message, fields). The
+  actual `stop()` happens from R. `.Call` returns a tagged "error result"
+  and an R wrapper signals it. This keeps condition construction in one R
+  function (`nanowasm_abort()`) and keeps all `Rf_error` longjmps out of C
+  paths that hold toywasm resources.
+- Ctrl-C re-signals base R's `interrupt` condition rather than a
+  `nanowasm_*` class.
+
+## 9. Sandbox model
+
+- A module can only affect the outside world through its imports. The package
+  supplies **no imports by default**. There is no ambient WASI, and nothing
+  touches files, sockets, environment variables, clocks or randomness.
+- Everything a module can do to the R process is bounded: memory (§7), time
+  (§6.4), stack (§7), and host functions the user chose to expose.
+- The things that can still go wrong are bugs in toywasm or in the glue layer.
+  Mitigations: sanitizer CI (ASan/UBSan, valgrind), fuzzing module loading
+  with the upstream fuzz harness ideas (roadmap phase 5), and pinned upgrades
+  that follow upstream fixes.
+- The docs state plainly that this is a *robustness* sandbox for untrusted
+  *computations*, not a security boundary audited for hostile code.
+
+## 10. Opt-in WASI subset (later)
+
+Many real modules (wasi-sdk, Rust `wasm32-wasip1`) import a few WASI calls
+even for pure computation. The plan is a helper written **in R, on top of the
+host-function API**, not toywasm's `libwasi`:
+
+```r
+wasi <- wasm_wasi(args = character(), env = character(), stdout = "console")
+inst <- wasm_instantiate(mod, imports = wasi$imports)
+```
+
+It covers `fd_write` (stdout/stderr to the R console), `proc_exit` (→ a
+`nanowasm_exit` condition with `$status`), `args_*`, `environ_*`,
+`clock_time_get`, `random_get` (from R's RNG, so `set.seed` works), and stubs
+returning `ENOSYS` for the rest. No filesystem. Because it is R code on the
+public API, it stays inside the sandbox model and doubles as a test of
+that API.
+
+## 11. Testing strategy
+
+- **Fixtures:** `.wat` sources and the compiled `.wasm` are both committed to
+  `tests/testthat/fixtures/`. `tools/build-fixtures.sh` regenerates them with
+  `wat2wasm` (wabt). CI does **not** need wabt. A CI job reruns the script and
+  fails if the `.wasm` files differ from the committed ones.
+- **Unit tests** by area: loading/validation, introspection, value mapping
+  edges (`INT_MIN`, `2^31`, `2^53`, NaN, `-0`), memory read/write/grow/OOB,
+  imports (linking, errors, the `caller` object), every condition class,
+  limits (deep recursion, memory bomb, infinite loop + timeout), lifetimes
+  (`gc()` in the middle of a call, `saveRDS` round trip, instance outliving
+  its module variable).
+- **Spec conformance (CI only, not shipped):** convert a subset of the
+  WebAssembly spec test suite with `wast2json`, and run it through a small
+  runner in `tools/`. It is excluded from the package tarball to keep the
+  size down and check time short.
+- **Examples/vignette:** use tiny `.wasm` files in `inst/extdata/` (for
+  example `add.wasm`, `fib.wasm`, and a small C-compiled string routine).
+  Checked in, with sources and build commands in `inst/extdata/README.md`.
+- **Sanitizers:** a CI job builds with `-fsanitize=address,undefined`, and
+  one runs tests under valgrind, before any CRAN submission.
+
+## 12. Open questions
+
+The answers for the 0.1.0 release are recorded in
+[roadmap.md §1](roadmap.md#1-release-scope). The questions stay open here for
+later releases.
+
+1. **Lossless i64.** Options: accept/return `bit64::integer64` when bit64 is
+   installed (Suggests), or a `"string"` mode. Decide when a real user
+   needs more than 53 bits.
+2. **Re-entrancy.** Should a host callback be allowed to call back into the
+   same instance? toywasm probably supports a nested `exec_context` on the
+   same instance, but it needs testing, a C-stack depth guard, and a clear
+   story for the state of the outer call.
+3. **Instance reuse after a trap or timeout.** Keep it usable (current plan),
+   or mark it "poisoned" and require re-instantiation? Wasmtime keeps it
+   usable, and so does this plan.
+4. **Printing and memory views.** Is a lazy `[.nanowasm_memory` indexing sugar
+   (`mem[0:15]`) worth adding, or does it hide the 0-based offsets too well?
+5. **Sharing between instances.** Import one instance's exported memory or
+   functions into another. The glue layer design allows it (import_object
+   chain); it is deferred for API reasons, not technical ones.
+6. **Upstream patches.** The interrupt hook and the logging shim. Offer them
+   to toywasm early, so the vendored patch set shrinks toward zero.

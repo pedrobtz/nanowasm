@@ -1,3 +1,3 @@
-# nanowasm (development version)
+# nanowasm 0.0.0.9001
 
-* Initial CRAN submission.
+* Package skeleton. No user-facing functionality yet.
