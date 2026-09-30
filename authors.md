@@ -13,13 +13,13 @@ Source:
 [`DESCRIPTION`](https://github.com/pedrobtz/nanowasm/blob/main/DESCRIPTION)
 
 Baltazar P (2026). *nanowasm: Run 'WebAssembly' Modules with a Bundled
-Interpreter*. R package version 0.0.0.9003,
+Interpreter*. R package version 0.0.0.9004,
 <https://pedrobtz.github.io/nanowasm/>.
 
     @Manual{,
       title = {nanowasm: Run 'WebAssembly' Modules with a Bundled Interpreter},
       author = {Pedro Baltazar},
       year = {2026},
-      note = {R package version 0.0.0.9003},
+      note = {R package version 0.0.0.9004},
       url = {https://pedrobtz.github.io/nanowasm/},
     }

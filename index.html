@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nanowasm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9003</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -84,7 +84,23 @@
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="va">inst</span><span class="op">$</span><span class="fu">fib</span><span class="op">(</span><span class="fl">1.5</span><span class="op">)</span>, nanowasm_argument_error <span class="op">=</span> <span class="va">conditionMessage</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "Argument 1 of `fib` (i32) must be a whole number in [-2^31, 2^32)."</span></span></code></pre></div>
-<p>Linear memory access, resource limits and R functions as imports are on the way to the first release.</p>
+<p>Data moves through the module’s linear memory. WebAssembly has no standard allocator, so ask the module for space:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">inst</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/wasm_instantiate.html">wasm_instantiate</a></span><span class="op">(</span><span class="fu"><a href="reference/wasm_module.html">wasm_module</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"sum.wasm"</span>, package <span class="op">=</span> <span class="st">"nanowasm"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">mem</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/wasm_memory.html">wasm_memory</a></span><span class="op">(</span><span class="va">inst</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">x</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.5</span>, <span class="fl">2.5</span>, <span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">ptr</span> <span class="op">&lt;-</span> <span class="va">inst</span><span class="op">$</span><span class="fu">alloc</span><span class="op">(</span><span class="fl">8L</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/wasm_memory.html">wasm_write</a></span><span class="op">(</span><span class="va">mem</span>, <span class="va">ptr</span>, <span class="va">x</span>, <span class="st">"f64"</span><span class="op">)</span></span>
+<span><span class="va">inst</span><span class="op">$</span><span class="fu">sum_f64</span><span class="op">(</span><span class="va">ptr</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 16</span></span></code></pre></div>
+<p>Every instance runs under resource limits:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">inst</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/wasm_instantiate.html">wasm_instantiate</a></span><span class="op">(</span><span class="va">mod</span>, limits <span class="op">=</span> <span class="fu"><a href="reference/wasm_limits.html">wasm_limits</a></span><span class="op">(</span>memory <span class="op">=</span> <span class="fl">16</span> <span class="op">*</span> <span class="fl">2</span><span class="op">^</span><span class="fl">20</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">inst</span><span class="op">$</span><span class="fu">fib</span><span class="op">(</span><span class="fl">45L</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Error in inst$fib(45L) :</span></span>
+<span><span class="co">#&gt;   The WebAssembly call was stopped after 1 second, its time limit.</span></span></code></pre></div>
+<p>R functions as imports are on the way to the first release.</p>
 </div>
 <div class="section level2">
 <h2 id="sandbox">Sandbox<a class="anchor" aria-label="anchor" href="#sandbox"></a>

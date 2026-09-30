@@ -9,7 +9,7 @@ instance's exported functions. `inst$name(...)` is shorthand for
 ## Usage
 
 ``` r
-wasm_instantiate(module)
+wasm_instantiate(module, limits = NULL)
 
 wasm_call(instance, name, ...)
 ```
@@ -20,6 +20,14 @@ wasm_call(instance, name, ...)
 
   A `nanowasm_module` from
   [`wasm_module()`](https://pedrobtz.github.io/nanowasm/reference/wasm_module.md).
+
+- limits:
+
+  Resource limits from
+  [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md).
+  The default is `getOption("nanowasm.limits")`, or
+  [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md)
+  if that is unset.
 
 - instance:
 
@@ -62,9 +70,12 @@ returns an unnamed list.
 
 If the WebAssembly code traps, the call signals a `nanowasm_trap` (see
 [nanowasm-conditions](https://pedrobtz.github.io/nanowasm/reference/nanowasm-conditions.md)).
-Calls are limited to 10,000 nested frames and 1,000,000 value-stack
-cells, so runaway recursion signals a `nanowasm_stack_exhausted` error
-rather than exhausting memory.
+Every call runs under the instance's
+[`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md),
+so runaway recursion, memory growth or loops end in an error rather than
+exhausting the R session. Ctrl-C interrupts a running call.
+
+An instance runs one call at a time.
 
 ## Examples
 

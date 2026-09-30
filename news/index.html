@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nanowasm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9003</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,16 @@
       <small>Source: <a href="https://github.com/pedrobtz/nanowasm/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.0.0.9004" id="nanowasm-0009004">nanowasm 0.0.0.9004<a class="anchor" aria-label="anchor" href="#nanowasm-0009004"></a></h2>
+<ul><li>
+<code><a href="../reference/wasm_memory.html">wasm_memory()</a></code> gives access to an instance’s linear memory: <code><a href="../reference/wasm_memory.html">wasm_read()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_write()</a></code> for typed vectors, <code><a href="../reference/wasm_memory.html">wasm_read_string()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_write_string()</a></code> for UTF-8 strings, and <code><a href="../reference/wasm_memory.html">wasm_memory_size()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_memory_grow()</a></code>. Offsets are 0-based byte addresses and every access is bounds-checked.</li>
+<li>
+<code><a href="../reference/wasm_global.html">wasm_global()</a></code> reads an exported global, and <code>wasm_global&lt;-</code> sets a mutable one.</li>
+<li>
+<code><a href="../reference/wasm_limits.html">wasm_limits()</a></code> sets an instance’s memory, call-depth, value-stack and time limits, passed to <code>wasm_instantiate(limits = )</code> or set for all instances with <code>options(nanowasm.limits = )</code>. A call that runs too long signals <code>nanowasm_timeout</code>, and Ctrl-C interrupts a running call.</li>
+<li>New example module <code>sum.wasm</code>, with a bump allocator.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9003" id="nanowasm-0009003">nanowasm 0.0.0.9003<a class="anchor" aria-label="anchor" href="#nanowasm-0009003"></a></h2>
 <ul><li>

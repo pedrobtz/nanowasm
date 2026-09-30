@@ -9,7 +9,7 @@ specific class that code can catch with tryCatch():"></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">nanowasm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9003</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,9 +60,17 @@ between R and WebAssembly (<code>funcref</code>, <code>externref</code>, <code>v
 and <code>detail</code> holds the interpreter's own message. Subclasses:
 <code>nanowasm_stack_exhausted</code> (call or value stack limit) and
 <code>nanowasm_out_of_bounds</code> (memory or table access out of bounds).</p></li>
-<li><p><code>nanowasm_memory_limit</code>: the interpreter could not allocate memory.</p></li>
+<li><p><code>nanowasm_memory_limit</code>: the instance reached its memory limit (see
+<code><a href="wasm_limits.html">wasm_limits()</a></code>), or the interpreter could not allocate memory.</p></li>
+<li><p><code>nanowasm_timeout</code>: a call ran longer than its time limit. <code>elapsed</code> and
+<code>limit</code> are in seconds.</p></li>
+<li><p><code>nanowasm_reentry_error</code>: an instance was called while already running a
+call.</p></li>
 <li><p><code>nanowasm_runtime_error</code>: any other failure inside the interpreter.</p></li>
-</ul></div>
+</ul><p>Out-of-bounds <code><a href="wasm_memory.html">wasm_read()</a></code> and <code><a href="wasm_memory.html">wasm_write()</a></code> calls signal
+<code>nanowasm_out_of_bounds</code> too, as a subclass of <code>nanowasm_argument_error</code>.</p>
+<p>Pressing Ctrl-C during a call signals R's usual <code>interrupt</code> condition.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

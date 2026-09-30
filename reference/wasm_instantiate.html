@@ -15,7 +15,7 @@ wasm_call(inst, &quot;name&quot;, ...)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">nanowasm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9003</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,7 +51,7 @@ instance's exported functions. <code>inst$name(...)</code> is shorthand for
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">wasm_instantiate</span><span class="op">(</span><span class="va">module</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">wasm_instantiate</span><span class="op">(</span><span class="va">module</span>, limits <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">wasm_call</span><span class="op">(</span><span class="va">instance</span>, <span class="va">name</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -62,6 +62,11 @@ instance's exported functions. <code>inst$name(...)</code> is shorthand for
 
 <dl><dt id="arg-module">module<a class="anchor" aria-label="anchor" href="#arg-module"></a></dt>
 <dd><p>A <code>nanowasm_module</code> from <code><a href="wasm_module.html">wasm_module()</a></code>.</p></dd>
+
+
+<dt id="arg-limits">limits<a class="anchor" aria-label="anchor" href="#arg-limits"></a></dt>
+<dd><p>Resource limits from <code><a href="wasm_limits.html">wasm_limits()</a></code>. The default is
+<code>getOption("nanowasm.limits")</code>, or <code><a href="wasm_limits.html">wasm_limits()</a></code> if that is unset.</p></dd>
 
 
 <dt id="arg-instance">instance<a class="anchor" aria-label="anchor" href="#arg-instance"></a></dt>
@@ -97,9 +102,11 @@ exactly signals a <code>nanowasm_precision_error</code> rather than being rounde
 result returns it as a length-one vector, and one with several results
 returns an unnamed list.</p>
 <p>If the WebAssembly code traps, the call signals a <code>nanowasm_trap</code> (see
-<a href="nanowasm-conditions.html">nanowasm-conditions</a>). Calls are limited to 10,000 nested frames and
-1,000,000 value-stack cells, so runaway recursion signals a
-<code>nanowasm_stack_exhausted</code> error rather than exhausting memory.</p>
+<a href="nanowasm-conditions.html">nanowasm-conditions</a>). Every call runs under the instance's
+<code><a href="wasm_limits.html">wasm_limits()</a></code>, so runaway recursion, memory growth or loops end in an
+error rather than exhausting the R session. Ctrl-C interrupts a running
+call.</p>
+<p>An instance runs one call at a time.</p>
     </div>
 
     <div class="section level2">

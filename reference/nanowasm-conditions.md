@@ -31,9 +31,26 @@ specific class that code can catch with
   (call or value stack limit) and `nanowasm_out_of_bounds` (memory or
   table access out of bounds).
 
-- `nanowasm_memory_limit`: the interpreter could not allocate memory.
+- `nanowasm_memory_limit`: the instance reached its memory limit (see
+  [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md)),
+  or the interpreter could not allocate memory.
+
+- `nanowasm_timeout`: a call ran longer than its time limit. `elapsed`
+  and `limit` are in seconds.
+
+- `nanowasm_reentry_error`: an instance was called while already running
+  a call.
 
 - `nanowasm_runtime_error`: any other failure inside the interpreter.
+
+Out-of-bounds
+[`wasm_read()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)
+and
+[`wasm_write()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)
+calls signal `nanowasm_out_of_bounds` too, as a subclass of
+`nanowasm_argument_error`.
+
+Pressing Ctrl-C during a call signals R's usual `interrupt` condition.
 
 ## Examples
 

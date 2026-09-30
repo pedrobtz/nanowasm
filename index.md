@@ -47,8 +47,32 @@ tryCatch(inst$fib(1.5), nanowasm_argument_error = conditionMessage)
 #> [1] "Argument 1 of `fib` (i32) must be a whole number in [-2^31, 2^32)."
 ```
 
-Linear memory access, resource limits and R functions as imports are on
-the way to the first release.
+Data moves through the module’s linear memory. WebAssembly has no
+standard allocator, so ask the module for space:
+
+``` r
+
+inst <- wasm_instantiate(wasm_module(system.file("extdata", "sum.wasm", package = "nanowasm")))
+mem  <- wasm_memory(inst)
+
+x   <- c(1.5, 2.5, 3, 4, 5)
+ptr <- inst$alloc(8L * length(x))
+wasm_write(mem, ptr, x, "f64")
+inst$sum_f64(ptr, length(x))
+#> [1] 16
+```
+
+Every instance runs under resource limits:
+
+``` r
+
+inst <- wasm_instantiate(mod, limits = wasm_limits(memory = 16 * 2^20, timeout = 1))
+inst$fib(45L)
+#> Error in inst$fib(45L) :
+#>   The WebAssembly call was stopped after 1 second, its time limit.
+```
+
+R functions as imports are on the way to the first release.
 
 ## Sandbox
 

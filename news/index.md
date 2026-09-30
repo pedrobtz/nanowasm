@@ -1,5 +1,30 @@
 # Changelog
 
+## nanowasm 0.0.0.9004
+
+- [`wasm_memory()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)
+  gives access to an instance’s linear memory:
+  [`wasm_read()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)
+  /
+  [`wasm_write()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)
+  for typed vectors,
+  [`wasm_read_string()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)
+  /
+  [`wasm_write_string()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)
+  for UTF-8 strings, and
+  [`wasm_memory_size()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md)
+  /
+  [`wasm_memory_grow()`](https://pedrobtz.github.io/nanowasm/reference/wasm_memory.md).
+  Offsets are 0-based byte addresses and every access is bounds-checked.
+- [`wasm_global()`](https://pedrobtz.github.io/nanowasm/reference/wasm_global.md)
+  reads an exported global, and `wasm_global<-` sets a mutable one.
+- [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md)
+  sets an instance’s memory, call-depth, value-stack and time limits,
+  passed to `wasm_instantiate(limits = )` or set for all instances with
+  `options(nanowasm.limits = )`. A call that runs too long signals
+  `nanowasm_timeout`, and Ctrl-C interrupts a running call.
+- New example module `sum.wasm`, with a bump allocator.
+
 ## nanowasm 0.0.0.9003
 
 - [`wasm_module()`](https://pedrobtz.github.io/nanowasm/reference/wasm_module.md)

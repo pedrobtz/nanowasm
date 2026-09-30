@@ -10,7 +10,10 @@
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/nanowasm-conditions.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/nanowasm-package.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_exports.html</loc></url>
+<url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_global.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_instantiate.html</loc></url>
+<url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_limits.html</loc></url>
+<url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_memory.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_module.html</loc></url>
 </urlset>
 
