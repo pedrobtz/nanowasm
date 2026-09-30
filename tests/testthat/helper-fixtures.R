@@ -13,6 +13,6 @@ fixture_instance <- function(name) {
 skip_if_signals_unreliable <- function() {
   skip_on_cran()
   skip_on_os("windows")
-  maps <- tryCatch(readLines("/proc/self/maps", warn = FALSE), error = function(e) character())
+  maps <- if (file.exists("/proc/self/maps")) readLines("/proc/self/maps", warn = FALSE) else character()
   skip_if(any(grepl("vgpreload", maps, fixed = TRUE)), "running under valgrind")
 }
