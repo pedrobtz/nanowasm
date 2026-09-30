@@ -2,6 +2,13 @@ url: https://pedrobtz.github.io/nanowasm/
 template:
   bootstrap: 5
 
+articles:
+  - title: Articles
+    navbar: ~
+    contents:
+      - nanowasm
+      - articles/examples
+
 reference:
   - title: Modules
     desc: Load and inspect WebAssembly modules.

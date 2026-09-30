@@ -1,0 +1,174 @@
+---
+title: "Examples"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+A tour of what you can do with nanowasm, one small module at a time. Each
+module is a few dozen lines of the WebAssembly text format, compiled with
+`wat2wasm`; the sources are in
+[`vignettes/articles/wasm/`](https://github.com/pedrobtz/nanowasm/tree/main/vignettes/articles/wasm)
+in the package's repository. `vignette("nanowasm")` covers the API itself.
+
+```{r setup}
+library(nanowasm)
+
+# Load one of this article's modules.
+example_module <- function(name) {
+  wasm_module(file.path("wasm", paste0(name, ".wasm")))
+}
+```
+
+## Strings through linear memory
+
+WebAssembly functions only take numbers, so text travels through the
+module's memory: R writes the bytes, passes a pointer and a length, and reads
+the result back. `strings.wasm` works on bytes in place:
+
+```{r}
+strings <- wasm_instantiate(example_module("strings"))
+mem <- wasm_memory(strings)
+
+text <- "hello from R, via WebAssembly"
+len <- length(charToRaw(text))
+wasm_write_string(mem, 0, text, nul = FALSE)
+
+strings$count(0L, len, utf8ToInt("o"))
+strings$upper(0L, len)
+wasm_read_string(mem, 0, len)
+```
+
+Offset 0 is fine here because the module doesn't use its memory for
+anything else. A real module usually exports an allocator; see the `sum.wasm`
+example in `vignette("nanowasm")`.
+
+## An image computed in WebAssembly
+
+`mandelbrot.wasm` renders the Mandelbrot set into its memory, one byte per
+pixel holding the number of iterations before the point escaped. R reads the
+bytes back as a matrix and plots it:
+
+```{r mandelbrot, fig.width = 7, fig.height = 5.25}
+mandel <- wasm_instantiate(example_module("mandelbrot"))
+w <- 240L
+h <- 180L
+maxiter <- 64L
+
+mandel$render(0L, w, h, -2.4, -1.2, 0.9, 1.2, maxiter)
+iterations <- wasm_read(wasm_memory(mandel), 0, w * h, "u8")
+img <- matrix(iterations, nrow = w)
+
+op <- par(mar = c(0, 0, 0, 0))
+# Points that never escaped (the set itself) are black.
+colours <- c(hcl.colors(maxiter, "Inferno"), "black")
+image(img, col = colours, axes = FALSE, useRaster = TRUE)
+par(op)
+```
+
+The module does all the arithmetic; R only handles the finished
+`r w * h`-byte image.
+
+## Calling R from WebAssembly
+
+A module can import functions from its host. `integrate.wasm` implements the
+trapezoidal rule for an imported `math.f`, so R decides what to integrate:
+
+```{r}
+wasm_imports(example_module("integrate"))
+
+integrator <- function(f) {
+  wasm_instantiate(
+    example_module("integrate"),
+    imports = list(math = list(f = wasm_func(f, params = "f64", results = "f64")))
+  )
+}
+
+integrator(sin)$trapezoid(0, pi, 1000L)
+integrator(dnorm)$trapezoid(-1.96, 1.96, 1000L)
+```
+
+The imported function can be any R closure, including one that keeps state.
+Here it counts how often WebAssembly called back into R:
+
+```{r}
+calls <- 0
+counted_exp <- function(x) {
+  calls <<- calls + 1
+  exp(-x^2)
+}
+integrator(counted_exp)$trapezoid(-3, 3, 200L)
+calls
+```
+
+If the R function fails, the WebAssembly call stops and the error carries the
+original condition:
+
+```{r}
+picky <- integrator(function(x) if (x > 1) stop("x is too large") else x)
+err <- tryCatch(picky$trapezoid(0, 2, 10L), nanowasm_host_error = identity)
+conditionMessage(err)
+conditionMessage(err$parent)
+```
+
+## State lives in the instance
+
+A module is code; an instance is that code with its own memory and globals.
+Instances of the same module don't share state:
+
+```{r}
+counter <- example_module("counter")
+a <- wasm_instantiate(counter)
+b <- wasm_instantiate(counter)
+
+for (i in 1:3) a$tick()
+b$tick()
+
+c(a = wasm_global(a, "count"), b = wasm_global(b, "count"))
+
+wasm_global(b, "count") <- 100L
+b$tick()
+```
+
+## Running code you don't trust
+
+`untrusted.wasm` loops forever, recurses without end and grabs all the
+memory it can. Under `wasm_limits()` each of those ends in an error of its
+own class, and R carries on:
+
+```{r}
+untrusted <- wasm_instantiate(
+  example_module("untrusted"),
+  limits = wasm_limits(memory = 16 * 2^20, frames = 1000, timeout = 0.25)
+)
+
+run_safely <- function(expr) {
+  tryCatch(
+    expr,
+    nanowasm_timeout = function(e) "stopped: time limit",
+    nanowasm_stack_exhausted = function(e) "stopped: stack limit",
+    nanowasm_memory_limit = function(e) "stopped: memory limit",
+    nanowasm_trap = function(e) paste("trapped:", e$trap_id)
+  )
+}
+
+run_safely(untrusted$spin())
+run_safely(untrusted$recurse(0L))
+```
+
+A module asking for more memory than the limit allows is told no, as
+WebAssembly specifies (`memory.grow` returns -1), so `hog()` stops growing
+at the limit and returns the number of pages it managed to get:
+
+```{r}
+pages <- untrusted$hog()
+pages
+pages * 65536 / 2^20 # MiB
+```
+
+The instance is still usable after all of this:
+
+```{r}
+run_safely(untrusted$spin())
+```

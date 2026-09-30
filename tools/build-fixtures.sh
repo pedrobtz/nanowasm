@@ -24,7 +24,7 @@ else
   wat2wasm () { npx --yes -p "wabt@$WABT_VERSION" wat2wasm "$@"; }
 fi
 
-for dir in tests/testthat/fixtures inst/extdata; do
+for dir in tests/testthat/fixtures inst/extdata vignettes/articles/wasm; do
   for wat in "$PKG_ROOT/$dir"/*.wat; do
     [ -e "$wat" ] || continue
     flags="$(sed -n '1s/^;; wat2wasm: //p' "$wat")"
