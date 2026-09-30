@@ -91,26 +91,26 @@ describe code that isn't in the tree until toywasm is vendored.
 
 Tracked in [milestone M1](https://github.com/pedrobtz/nanowasm/milestone/2) (issues #6–#13).
 
-- [ ] `inst/COPYRIGHTS` (toywasm notice + full BSD-2-Clause text) and
-      YAMAMOTO Takashi as `cph` in `Authors@R`. (#3)
-- [ ] `tools/vendor/` tooling, following the sibling packages (zusat, zusmt):
-      a vendoring script, `VENDORED` (tag, commit), `manifest.tsv`,
-      `checksums.sha256` and `verify`, checked by the r-actions `vendor.yml`
-      workflow. Vendor **v76.0.0**.
-- [x] Decide whether `tools/` ships in the tarball: **no**. It follows the
-      convention of the sibling packages: `inst/COPYRIGHTS` records the
-      provenance and the patches applied, and the tooling stays in the
-      repository.
-- [ ] Hand-written `toywasm_config.h` / `.c` and `toywasm_version.h` (design §3.3).
-- [ ] Prune sources (threads, WASI, dyld, stdio, fileio), adding stubs as
-      patches only where needed.
-- [ ] `xlog` shim patch.
-- [ ] `Makevars` / `Makevars.win`, `init.c` with registration,
-      `useDynLib` in the usethis block, one `.Call` returning the toywasm
-      version.
-- [ ] CI: symbol check (`abort`, `exit`, `printf`, `puts`, `stdout`, `stderr`,
-      `rand`).
-- [ ] Warning-free under gcc and clang `-Wall -Wextra -pedantic`.
+- [x] `inst/COPYRIGHTS` + `inst/TOYWASM_LICENSE`, and toywasm's author as
+      `cph` in `Authors@R`. (#3)
+- [x] `tools/vendor-toywasm.sh` + `tools/vendor/` (file list, `patch-for-r.sh`,
+      `VENDORED`, `manifest.tsv`, `checksums.sha256`, `verify`). Vendors
+      **v76.0.0**. The r-actions `vendor.yml` guard runs on PRs, and
+      `vendor-upstream.yml` runs weekly. (#6)
+- [x] `tools/` does not ship in the tarball, following the sibling packages.
+- [x] Hand-written `src/toywasm_config.h`. `toywasm_version.h` is generated,
+      and `toywasm_config.c` is not needed (only upstream's CLI uses it). (#7)
+- [x] Sources pruned to 32 `.c` / 56 `.h`, with no stubs needed. (#8)
+- [x] `src/toywasm_shim.c` replaces `xlog.c` and `nbio.c` (all output
+      discarded). (#9)
+- [x] `Makevars` / `Makevars.win`, `init.c` with registration, `useDynLib`,
+      and `toywasm_version()` (internal) with a test. (#10)
+- [x] Symbol check: covered by `R CMD check`'s "compiled code" WARNING, which
+      CI already fails on, so no separate `nm` step. (#12)
+- [x] Zero warnings under clang `-std=gnu23 -O3 -Wall -pedantic` locally.
+      `-Wextra` was dropped as a target, because CRAN doesn't use it and it
+      only adds `-Wunused-parameter` on callbacks. gcc is checked in CI. (#13)
+- [ ] Windows (Rtools) build green in CI. (#11)
 
 **Exit:** a full-profile CI run is green on all three OSes. The installed
 package is under 5 MB.

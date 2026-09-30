@@ -1,0 +1,17 @@
+on:
+  schedule:
+    # Weekly. toywasm releases often, but a new version is not urgent.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+name: vendor-upstream
+
+jobs:
+  upstream:
+    uses: pedrobtz/r-actions/.github/workflows/vendor-upstream.yml@v1
+    permissions:
+      contents: read
+      issues: write
+    with:
+      upstream-repo: yamt/toywasm
+      current-version: "sed -n 's/^version: //p' tools/vendor/VENDORED"

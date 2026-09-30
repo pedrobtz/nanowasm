@@ -1,0 +1,27 @@
+The nanowasm R package as a whole is released under the MIT licence; see the
+LICENSE file.
+
+Bundled third-party source
+--------------------------
+
+src/toywasm/ contains part of toywasm, a WebAssembly interpreter by
+YAMAMOTO Takashi, vendored from https://github.com/yamt/toywasm at tag
+v76.0.0, commit 0462f000e110ad0752de67d9a256727d97c21e2d. toywasm is
+distributed under the 2-clause BSD licence, reproduced in full in
+inst/TOYWASM_LICENSE.
+
+Copyright (c) 2022-2026 YAMAMOTO Takashi. All rights reserved.
+
+Only the interpreter library (upstream lib/) is included, and only the files
+the package's configuration needs. The sources are modified during vendoring
+to suit R: assertions can no longer call abort(), one GNU C extension that
+warns under -pedantic is replaced by upstream's portable fallback, and an
+upstream compile error in a statistics function is fixed. Upstream's logging
+and stdio helpers (xlog.c, nbio.c) are replaced by src/toywasm_shim.c, and
+the build configuration is src/toywasm_config.h.
+
+tools/vendor-toywasm.sh and tools/vendor/ in the package's source repository
+perform the vendoring and record what each change does; VENDORED,
+manifest.tsv and checksums.sha256 there record the provenance and let the
+tree be verified against it. Those files are development tooling and are not
+shipped in this tarball.

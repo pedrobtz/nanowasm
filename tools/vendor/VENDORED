@@ -1,0 +1,11 @@
+toywasm vendored from https://github.com/yamt/toywasm.git
+version: 76.0.0
+ref:     v76.0.0
+commit:  0462f000e110ad0752de67d9a256727d97c21e2d
+
+Regenerate with: tools/vendor-toywasm.sh v76.0.0
+Files: tools/vendor/toywasm-files.txt (a subset of upstream lib/).
+Local modifications: applied by tools/vendor/patch-for-r.sh; see that script
+for what each rewrite does and why. Build configuration lives in
+src/toywasm_config.h, and src/toywasm_shim.c replaces upstream's logging and
+stdio helpers.

@@ -1,0 +1,18 @@
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+name: vendor
+
+permissions: read-all
+
+jobs:
+  vendor:
+    uses: pedrobtz/r-actions/.github/workflows/vendor.yml@v1
+    with:
+      vendor-dir: src/toywasm
+      verify: tools/vendor/verify
+      must-update: |
+        tools/vendor/manifest.tsv
+        tools/vendor/checksums.sha256
