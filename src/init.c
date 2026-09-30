@@ -2,8 +2,16 @@
 
 #include "nanowasm.h"
 
+#define CALLDEF(name, n) {#name, (DL_FUNC)&name, n}
+
 static const R_CallMethodDef call_methods[] = {
-        {"nw_toywasm_version", (DL_FUNC)&nw_toywasm_version, 0},
+        CALLDEF(nw_toywasm_version, 0),
+        CALLDEF(nw_ptr_is_live, 1),
+        CALLDEF(nw_module_load, 1),
+        CALLDEF(nw_module_exports, 1),
+        CALLDEF(nw_module_imports, 1),
+        CALLDEF(nw_instantiate, 1),
+        CALLDEF(nw_call, 3),
         {NULL, NULL, 0}
 };
 

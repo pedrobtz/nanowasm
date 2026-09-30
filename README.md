@@ -24,15 +24,33 @@ imports.
 pak::pak("pedrobtz/nanowasm")
 ```
 
-## Planned usage
+## Usage
 
 ``` r
 library(nanowasm)
 
-mod  <- wasm_module("fib.wasm")
-inst <- wasm_instantiate(mod, limits = wasm_limits(timeout = 5))
+path <- system.file("extdata", "fib.wasm", package = "nanowasm")
+mod  <- wasm_module(path)
+mod
+#> <nanowasm_module> 61 bytes
+#> exports:
+#>   fib  function  (i32) -> i32
+#> imports: none
+
+inst <- wasm_instantiate(mod)
 inst$fib(25L)
+#> [1] 75025
 ```
+
+Traps and other failures are classed R conditions:
+
+``` r
+tryCatch(inst$fib(1.5), nanowasm_argument_error = conditionMessage)
+#> [1] "Argument 1 of `fib` (i32) must be a whole number in [-2^31, 2^32)."
+```
+
+Linear memory access, resource limits and R functions as imports are on the
+way to the first release.
 
 ## Sandbox
 

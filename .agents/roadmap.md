@@ -121,17 +121,26 @@ Hit it first. If it needs more than small patches, raise it before M2.
 
 Tracked in [milestone M2](https://github.com/pedrobtz/nanowasm/milestone/3) (issues #14–#22).
 
-- [ ] Fixture pipeline: `.wat` + committed `.wasm`, `tools/build-fixtures.sh`,
-      and a CI job that verifies the committed binaries match their sources.
-- [ ] `wasm_module()` / `wasm_validate()` (keeps the bytes alive, module size limit).
-- [ ] `wasm_exports()` / `wasm_imports()` / `print` / signature formatting.
-- [ ] `wasm_instantiate()` without imports (error if the module needs any)
-      and the start function.
-- [ ] `wasm_call()`, `$`, `names()`, and value mapping with edge-case tests.
-- [ ] Condition machinery (C returns error data, `nanowasm_abort()` signals it):
-      validation, argument/precision, trap + `trap_id` table, invalid object.
-- [ ] Finalisers and lifetime tests (`gc()` torture, `saveRDS` round trip).
-- [ ] `inst/extdata/add.wasm`, `fib.wasm`, and roxygen examples.
+- [x] Fixture pipeline: `.wat` + committed `.wasm`, `tools/build-fixtures.sh`
+      (wabt 1.0.37 through npx if not installed), and a `fixtures.yml` CI job
+      that fails if the committed binaries differ from their sources. (#14)
+- [x] `wasm_module()` / `wasm_validate()`, keeping a private copy of the
+      bytes, plus the `nanowasm.max_module_size` limit (64 MB). (#15)
+- [x] `wasm_exports()` / `wasm_imports()` / `print` / signature formatting.
+      Exports are sorted by name; an implicit max is not shown. (#16)
+- [x] `wasm_instantiate()` without imports (link error listing them) and the
+      start function. (#17)
+- [x] `wasm_call()`, `$`, `[[`, `names()`. Value mapping and edge-case
+      tests. (#18, #19)
+- [x] Condition machinery (`nanowasm_failure` data → `nw_check()`):
+      validation, argument/precision, unsupported, trap + `trap_id` table,
+      invalid object, runtime error. (#20)
+- [x] Reference-counted C objects, since finaliser order is not guaranteed.
+      Lifetime tests (`gc()`, `gctorture`, `saveRDS` round trip). (#21)
+- [x] `inst/extdata/add.wasm`, `fib.wasm` (+ `.wat`, README), and roxygen
+      examples. (#22)
+- [x] Default limits of 10,000 frames and 1e6 stack cells until M3 makes them
+      configurable, because toywasm's defaults are unlimited.
 
 **Exit:** `inst$fib(25L)` works. Every trap fixture maps to the right class.
 Coverage of `R/` is ≥ 90%.
@@ -145,7 +154,8 @@ Tracked in [milestone M3](https://github.com/pedrobtz/nanowasm/milestone/4) (iss
 - [ ] `wasm_global()` get/set.
 - [ ] `wasm_limits()` + option: per-instance `mem_context` limit and
       `exec_options`.
-- [ ] Interrupt hook patch. Timeout → `nanowasm_timeout`, Ctrl-C → `interrupt`.
+- [ ] Timeouts and Ctrl-C through toywasm's user-interrupt restart (no
+      patch; see design §6.4). Timeout → `nanowasm_timeout`, Ctrl-C → `interrupt`.
 - [ ] Classes `nanowasm_stack_exhausted`, `nanowasm_memory_limit`,
       `nanowasm_out_of_bounds`.
 - [ ] Hostile fixtures: infinite loop, unbounded recursion, `memory.grow`
@@ -197,7 +207,8 @@ Should-have (drop if it holds the release back more than a week):
 
 - [ ] Spec-test subset runner in `tools/` (CI only), with the pass rate and
       known gaps recorded.
-- [ ] Interrupt hook and xlog patches offered to toywasm.
+- [ ] Vendoring fixes reported to toywasm (`code_size`, mingw `vasprintf`,
+      `__printflike`).
 
 **Exit:** see §3.
 
