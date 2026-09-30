@@ -1,53 +1,27 @@
-# nanowasm 0.0.0.9006
+# nanowasm 0.0.0.9000
 
-* New vignette, `vignette("nanowasm")`, covering the whole API and what the
-  sandbox does and doesn't guarantee.
-* Undefined behaviour in the bundled interpreter, found with UBSan, is fixed.
-
-# nanowasm 0.0.0.9005
-
-* Modules can import R functions: wrap them with `wasm_func()` and pass them
-  to `wasm_instantiate(imports = )`. Linking reports every missing or
-  mismatched import at once. An R function with a `caller` argument can
-  reach the calling instance's memory through `caller$memory()`.
-* An error in an imported R function signals a `nanowasm_host_error` whose
-  `parent` is the original condition; interrupts, restarts and other jumps
-  out of an import unwind the WebAssembly call safely.
-* New example module `log.wasm`.
-
-# nanowasm 0.0.0.9004
-
-* `wasm_memory()` gives access to an instance's linear memory:
-  `wasm_read()` / `wasm_write()` for typed vectors, `wasm_read_string()` /
-  `wasm_write_string()` for UTF-8 strings, and `wasm_memory_size()` /
-  `wasm_memory_grow()`. Offsets are 0-based byte addresses and every access
-  is bounds-checked.
-* `wasm_global()` reads an exported global, and `wasm_global<-` sets a
-  mutable one.
-* `wasm_limits()` sets an instance's memory, call-depth, value-stack and
-  time limits, passed to `wasm_instantiate(limits = )` or set for all
-  instances with `options(nanowasm.limits = )`. A call that runs too long
-  signals `nanowasm_timeout`, and Ctrl-C interrupts a running call.
-* New example module `sum.wasm`, with a bump allocator.
-
-# nanowasm 0.0.0.9003
+Development version, heading for the first release (0.1.0).
 
 * `wasm_module()` loads and validates a WebAssembly module from a raw vector
   or a `.wasm` file; `wasm_validate()` only checks it. `wasm_exports()` and
   `wasm_imports()` list what a module provides and needs.
-* `wasm_instantiate()` creates an instance (running the start function), and
+* `wasm_instantiate()` creates an instance (running its start function), and
   `wasm_call()` or `inst$name(...)` calls its exported functions, converting
   `i32`, `i64`, `f32` and `f64` values to and from R.
-* Traps, invalid modules and bad arguments signal classed conditions
-  (`nanowasm_trap`, `nanowasm_validation_error`, `nanowasm_argument_error`,
-  ...); see `?nanowasm-conditions`.
-* Example modules `add.wasm` and `fib.wasm` are installed in `extdata/`.
-
-# nanowasm 0.0.0.9002
-
-* Bundles the toywasm WebAssembly interpreter (v76.0.0). It is built with the
-  package but not yet exposed through an R API.
-
-# nanowasm 0.0.0.9001
-
-* Package skeleton. No user-facing functionality yet.
+* `wasm_memory()` gives access to an instance's linear memory:
+  `wasm_read()` / `wasm_write()` for typed vectors, `wasm_read_string()` /
+  `wasm_write_string()` for UTF-8 strings, and `wasm_memory_size()` /
+  `wasm_memory_grow()`. `wasm_global()` reads and sets exported globals.
+* Modules can import R functions: wrap them with `wasm_func()` and pass them
+  to `wasm_instantiate(imports = )`. An R function with a `caller` argument
+  can reach the calling instance's memory.
+* `wasm_limits()` bounds an instance's memory, call depth, value stack and
+  time per call; Ctrl-C interrupts a running call.
+* Every failure is a classed condition (`nanowasm_trap`,
+  `nanowasm_timeout`, `nanowasm_host_error`, ...); see
+  `?nanowasm-conditions`.
+* Modules run in the bundled toywasm interpreter (v76.0.0), so no system
+  WebAssembly runtime is needed.
+* `vignette("nanowasm")` walks through the API, and the example modules
+  `add.wasm`, `fib.wasm`, `sum.wasm` and `log.wasm` are installed in
+  `extdata/`.

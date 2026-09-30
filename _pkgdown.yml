@@ -2,6 +2,14 @@ url: https://pedrobtz.github.io/nanowasm/
 template:
   bootstrap: 5
 
+# Development mode follows the version: 0.0.0.9000 (never released) builds
+# the site at the root, marked "unreleased"; a release (0.1.0) builds at the
+# root; a later development version (0.1.0.9000) builds into dev/, leaving
+# the released docs at the root. The deploy step keeps both (clean: false in
+# pkgdown.yaml).
+development:
+  mode: auto
+
 articles:
   - title: Articles
     navbar: ~
