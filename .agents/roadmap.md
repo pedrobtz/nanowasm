@@ -238,15 +238,17 @@ Must-have:
 
 Should-have:
 
-- [x] Spec-test runner in `tools/spec/` (CI only, `spec.yml`): 69 core files
-      from WebAssembly/testsuite at a pinned commit, converted by wabt 1.0.37.
+- [x] Spec-test runner in `tools/spec/` (`run.sh`, run locally before a
+      release, since CI uses only r-actions): 69 core files from
+      WebAssembly/testsuite at a pinned commit, converted by wabt 1.0.37.
       **18,013 commands pass, 0 fail**, and 6,365 are skipped as not
       expressible through R (i64 beyond 2^53, NaN payloads,
       references, non-function imports, text-format assertions). New
-      failures, or known ones that start passing, fail the job. (#40)
+      failures, or known ones that start passing, make the run fail. (#40)
 - [ ] Vendoring fixes reported to toywasm (`code_size`, mingw `vasprintf`,
-      `__printflike`, NULL + 0). Needs the maintainer's go-ahead, since it
-      posts to another project. (#41)
+      `__printflike`, NULL + 0, `qsort`, `host_instance.h` guard). Drafts are
+      in `.agents/upstream-reports.md`. Needs the maintainer's go-ahead,
+      since it posts to another project. (#41)
 
 **Exit:** see §3.
 

@@ -7,7 +7,8 @@
 # listed in tools/spec/files.txt to JSON + .wasm with wast2json, and runs
 # tools/spec/runner.R on them with the installed nanowasm. wast2json comes
 # from $WAST2JSON if set, otherwise from the pinned wabt release (Linux).
-# Needs R with nanowasm and jsonlite installed.
+# Needs R with nanowasm and jsonlite installed. Run it before a release; CI
+# uses only pedrobtz/r-actions workflows and does not run it.
 set -eu
 
 TESTSUITE_COMMIT="b464a4cd100d98175ae6e3890db89a2e6c8302f7"
