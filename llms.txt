@@ -1,0 +1,27 @@
+# nanowasm
+
+The goal of nanowasm is to …
+
+## Installation
+
+You can install the development version of nanowasm from
+[GitHub](https://github.com/) with:
+
+``` r
+
+# install.packages("pak")
+pak::pak("pedrobtz/nanowasm")
+```
+
+## Example
+
+This is a basic example which shows you how to solve a common problem:
+
+``` r
+
+library(nanowasm)
+## basic example code
+```
+
+# 
+
