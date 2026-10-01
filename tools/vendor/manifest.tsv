@@ -1,2 +1,2 @@
 name	repo	ref	commit	version	dest	local_changes
-toywasm	https://github.com/yamt/toywasm.git	v76.0.0	0462f000e110ad0752de67d9a256727d97c21e2d	76.0.0	src/toywasm	777ec0da3a47cc55
+toywasm	https://github.com/yamt/toywasm.git	v76.0.0	0462f000e110ad0752de67d9a256727d97c21e2d	76.0.0	src/toywasm	30742b5ff1f94b6c

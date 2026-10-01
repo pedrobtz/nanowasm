@@ -70,9 +70,11 @@ insn.h
 insn_impl.h
 insn_impl_base.h
 insn_impl_control.h
+insn_impl_eh.h
 insn_impl_fc.h
 insn_impl_tailcall.h
 insn_list_base.h
+insn_list_eh.h
 insn_list_fc.h
 insn_list_noprefix.h
 insn_list_tailcall.h

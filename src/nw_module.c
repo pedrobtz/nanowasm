@@ -66,6 +66,31 @@ nw_ptr_is_live(SEXP ptr)
                                 R_ExternalPtrAddr(ptr) != NULL);
 }
 
+/*
+ * The legacy exception-handling instructions (try 06, catch 07, rethrow 09,
+ * delegate 18, catch_all 19), which toywasm doesn't implement, are what
+ * wasi-sdk and Emscripten still emit by default. Say how to rebuild.
+ */
+static const char *
+legacy_eh_hint(const char *detail)
+{
+        static const char *const opcodes[] = {"06", "07", "09", "18", "19"};
+        if (detail == NULL || strstr(detail, "group 'base'") == NULL) {
+                return "";
+        }
+        for (size_t i = 0; i < sizeof(opcodes) / sizeof(opcodes[0]); i++) {
+                char needle[32];
+                snprintf(needle, sizeof(needle), "instruction %s ", opcodes[i]);
+                if (strstr(detail, needle) != NULL) {
+                        return " The module uses the legacy encoding of "
+                               "WebAssembly exceptions, which nanowasm "
+                               "doesn't support; rebuild it with "
+                               "`-mllvm -wasm-use-legacy-eh=false`.";
+                }
+        }
+        return "";
+}
+
 SEXP
 nw_module_load(SEXP bytes)
 {
@@ -102,13 +127,14 @@ nw_module_load(SEXP bytes)
         struct load_context lctx;
         load_context_init(&lctx, &nm->mctx);
         int ret = module_create(&nm->module, nm->bytes, nm->bytes + n, &lctx);
-        char msg[512] = "";
+        char msg[1024] = "";
         if (ret != 0) {
                 const char *detail = report_getmessage(&lctx.report);
-                snprintf(msg, sizeof(msg), "Invalid WebAssembly module: %s.",
+                snprintf(msg, sizeof(msg), "Invalid WebAssembly module: %s.%s",
                          detail != NULL && detail[0] != '\0'
                                  ? detail
-                                 : "failed to decode or validate");
+                                 : "failed to decode or validate",
+                         legacy_eh_hint(detail));
         }
         load_context_clear(&lctx);
         if (ret != 0) {
@@ -235,6 +261,10 @@ externtype_name(enum externtype t)
                 return "memory";
         case EXTERNTYPE_GLOBAL:
                 return "global";
+#if defined(TOYWASM_ENABLE_WASM_EXCEPTION_HANDLING)
+        case EXTERNTYPE_TAG:
+                return "tag";
+#endif
         default:
                 return "unknown";
         }
@@ -278,6 +308,12 @@ nw_module_exports(SEXP ptr)
                 case EXTERNTYPE_GLOBAL:
                         sb_globaltype(&sb, module_globaltype(m, idx));
                         break;
+#if defined(TOYWASM_ENABLE_WASM_EXCEPTION_HANDLING)
+                case EXTERNTYPE_TAG:
+                        /* An exception tag: the types it carries. */
+                        sb_resulttype(&sb, &module_tagtype_functype(m, module_tagtype(m, idx))->parameter);
+                        break;
+#endif
                 default:
                         break;
                 }
@@ -323,6 +359,11 @@ nw_module_imports(SEXP ptr)
                 case EXTERNTYPE_GLOBAL:
                         sb_globaltype(&sb, &d->u.globaltype);
                         break;
+#if defined(TOYWASM_ENABLE_WASM_EXCEPTION_HANDLING)
+                case EXTERNTYPE_TAG:
+                        sb_resulttype(&sb, &module_tagtype_functype(m, &d->u.tagtype)->parameter);
+                        break;
+#endif
                 default:
                         break;
                 }
