@@ -34,7 +34,11 @@ for src in "$PKG_ROOT"/tests/testthat/fixtures/wasi/*.c "$PKG_ROOT"/inst/extdata
            "$PKG_ROOT"/vignettes/articles/wasm/*.c; do
   [ -e "$src" ] || continue
   out="${src%.c}.wasm"
-  "$WASI_SDK/bin/clang" --target=wasm32-wasip1 -Oz -s \
+  # A source that needs extra flags names them on its first line:
+  #   // wasi-sdk: -mexec-model=reactor
+  flags="$(sed -n '1s|^// wasi-sdk: ||p' "$src")"
+  # shellcheck disable=SC2086 # flags are deliberately split
+  "$WASI_SDK/bin/clang" --target=wasm32-wasip1 -Oz -s $flags \
     -ffile-prefix-map="$PKG_ROOT"=. -o "$out" "$src"
   echo "built ${out#"$PKG_ROOT"/} ($(wc -c < "$out" | tr -d ' ') bytes)"
 done
