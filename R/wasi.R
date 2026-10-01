@@ -600,6 +600,16 @@ wasi_functions <- function(st) {
     st$fds[[as.character(fd)]] <- entry
     fd
   }
+  # Windows won't set the times of a file it has open, so the connections
+  # on it are closed meanwhile and reopened in their mode. Positions are
+  # unaffected: every read and write seeks first.
+  set_times <- function(host, mtim, flags) {
+    open <- names(Filter(function(f) identical(f$host, host) && !is.null(f$con), st$fds))
+    for (fd in open) close(st$fds[[fd]]$con)
+    res <- set_mtime(host, mtim, flags)
+    for (fd in open) st$fds[[fd]]$con <- file(host, open = st$fds[[fd]]$open)
+    res
+  }
   close_fd <- function(fd) {
     f <- fd_get(fd)
     if (!is.null(f$con)) try(close(f$con), silent = TRUE)
@@ -698,7 +708,7 @@ wasi_functions <- function(st) {
       if (is.null(f)) return(wasi_errno[["BADF"]])
       if (f$kind != "file") return(0L)
       if (!isTRUE(f$writable)) return(wasi_errno[["NOTCAPABLE"]])
-      set_mtime(f$host, mtim, flags)
+      set_times(f$host, mtim, flags)
     }),
     fd_pread = fn(c("i32", "i32", "i32", "i64", "i32"), function(fd, iovs, n, offset, nread, caller) {
       f <- fd_get(fd)
@@ -836,7 +846,7 @@ wasi_functions <- function(st) {
         p <- resolve(fd, mem(caller), ptr, len)
         if (!is.list(p)) return(p)
         if (!file.exists(p$host)) return(wasi_errno[["NOENT"]])
-        set_mtime(p$host, mtim, fst)
+        set_times(p$host, mtim, fst)
       }
     ),
     path_link = notsup(c("i32", "i32", "i32", "i32", "i32", "i32", "i32")),
@@ -875,7 +885,7 @@ wasi_functions <- function(st) {
         con <- tryCatch(file(p$host, open = open), error = function(e) NULL, warning = function(w) NULL)
         if (is.null(con)) return(wasi_errno[["ACCES"]])
         wr(m, out, le_u32(new_fd(list(
-          kind = "file", host = p$host, con = con, pos = 0,
+          kind = "file", host = p$host, con = con, open = sub("w", "r", open), pos = 0,
           append = append, writable = writable
         ))))
         0L

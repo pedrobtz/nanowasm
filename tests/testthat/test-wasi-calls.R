@@ -188,6 +188,10 @@ test_that("files grow, shrink and get modification times", {
   expect_identical(p$inst$path_filestat_set_times(3L, 0L, a[[1]], a[[2]], 0, 0, 8L), 0L)
   expect_lt(abs(as.numeric(file.mtime(file.path(dir, "f"))) - as.numeric(Sys.time())), 60)
   expect_identical(p$inst$fd_filestat_set_times(f$fd, 0, 0, 0L), 0L)
+  # The descriptor still works after its connection was reopened.
+  p$inst$fd_seek(f$fd, 0, 0L, 0L)
+  expect_identical(write_fd(p, f$fd, "ABC")$errno, 0L)
+  expect_identical(readBin(file.path(dir, "f"), "raw", 8), c(charToRaw("ABC"), raw(5)))
 
   b <- path_at(p, "missing")
   expect_identical(p$inst$path_filestat_set_times(3L, 0L, b[[1]], b[[2]], 0, 0, 8L), errno[["NOENT"]])
