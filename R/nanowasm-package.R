@@ -9,6 +9,8 @@
 #' * [wasm_memory()] and [wasm_read()] / [wasm_write()] move data through
 #'   linear memory, and [wasm_global()] reads and sets globals.
 #' * [wasm_func()] turns an R function into an import.
+#' * [wasm_run()] and [wasm_wasi()] run WASI programs, with only the
+#'   arguments, environment and directories you grant.
 #' * [wasm_limits()] bounds memory, recursion and time, and
 #'   [nanowasm-conditions] lists the errors nanowasm signals.
 #'

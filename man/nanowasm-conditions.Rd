@@ -38,6 +38,11 @@ Out-of-bounds \code{\link[=wasm_read]{wasm_read()}} and \code{\link[=wasm_write]
 \code{nanowasm_out_of_bounds} too, as a subclass of \code{nanowasm_argument_error}.
 
 Pressing Ctrl-C during a call signals R's usual \code{interrupt} condition.
+
+A WASI program that calls \code{exit()} stops its WebAssembly call with a
+\code{nanowasm_host_error} whose \code{parent} has class \code{nanowasm_wasi_exit} and an
+exit \code{status}; \code{\link[=wasm_wasi_start]{wasm_wasi_start()}} and \code{\link[=wasm_run]{wasm_run()}} turn it into the
+returned status.
 }
 \examples{
 mod <- wasm_module(system.file("extdata", "add.wasm", package = "nanowasm"))

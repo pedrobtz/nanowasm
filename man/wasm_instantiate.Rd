@@ -5,7 +5,7 @@
 \alias{wasm_call}
 \title{Instantiate a module and call its functions}
 \usage{
-wasm_instantiate(module, imports = list(), limits = NULL)
+wasm_instantiate(module, imports = list(), limits = NULL, wasi = NULL)
 
 wasm_call(instance, name, ...)
 }
@@ -19,6 +19,12 @@ ignored. See \code{\link[=wasm_imports]{wasm_imports()}} for what a module needs
 
 \item{limits}{Resource limits from \code{\link[=wasm_limits]{wasm_limits()}}. The default is
 \code{getOption("nanowasm.limits")}, or \code{wasm_limits()} if that is unset.}
+
+\item{wasi}{A WASI environment from \code{\link[=wasm_wasi]{wasm_wasi()}}, for modules that import
+\code{wasi_snapshot_preview1}. Its functions are added to \code{imports} (entries
+in \code{imports} take precedence), and a reactor module's \verb{_initialize} is
+called after instantiation. Run a command module with
+\code{\link[=wasm_wasi_start]{wasm_wasi_start()}}.}
 
 \item{instance}{A \code{nanowasm_instance} from \code{wasm_instantiate()}.}
 

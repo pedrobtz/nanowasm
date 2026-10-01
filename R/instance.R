@@ -38,6 +38,11 @@
 #'   ignored. See [wasm_imports()] for what a module needs.
 #' @param limits Resource limits from [wasm_limits()]. The default is
 #'   `getOption("nanowasm.limits")`, or `wasm_limits()` if that is unset.
+#' @param wasi A WASI environment from [wasm_wasi()], for modules that import
+#'   `wasi_snapshot_preview1`. Its functions are added to `imports` (entries
+#'   in `imports` take precedence), and a reactor module's `_initialize` is
+#'   called after instantiation. Run a command module with
+#'   [wasm_wasi_start()].
 #' @param instance A `nanowasm_instance` from `wasm_instantiate()`.
 #' @param name The name of an exported function.
 #' @param ... The function's arguments, in order.
@@ -49,7 +54,7 @@
 #' inst <- wasm_instantiate(mod)
 #' inst$fib(20L)
 #' wasm_call(inst, "fib", 10L)
-wasm_instantiate <- function(module, imports = list(), limits = NULL) {
+wasm_instantiate <- function(module, imports = list(), limits = NULL, wasi = NULL) {
   call <- sys.call()
   if (is.null(limits)) limits <- default_limits()
   if (!inherits(limits, "nanowasm_limits")) {
@@ -67,12 +72,27 @@ wasm_instantiate <- function(module, imports = list(), limits = NULL) {
     )
   }
   ptr <- nw_ptr(module, call)
+  if (!is.null(wasi)) {
+    if (!is.list(imports)) {
+      nanowasm_abort("nanowasm_argument_error", "`imports` must be a list.", call = call)
+    }
+    provided <- wasi_imports(wasi, call)
+    for (mod in names(provided)) {
+      own <- as.list(imports[[mod]])
+      imports[[mod]] <- c(provided[[mod]][setdiff(names(provided[[mod]]), names(own))], own)
+    }
+  }
   funcs <- link_imports(module, imports, call)
   inst <- nw_check(.Call(nw_instantiate, ptr, unclass(limits), unname(funcs)), call)
-  structure(
-    list(ptr = inst, module = module, limits = limits),
+  instance <- structure(
+    list(ptr = inst, module = module, limits = limits, wasi = wasi),
     class = "nanowasm_instance"
   )
+  exports <- module$exports
+  if (!is.null(wasi) && "_initialize" %in% exports$name[exports$kind == "function"]) {
+    nw_call_impl(instance, "_initialize", list(), call)
+  }
+  instance
 }
 
 #' @rdname wasm_instantiate

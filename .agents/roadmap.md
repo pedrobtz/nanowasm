@@ -43,13 +43,14 @@ condition.
 | Memory | `wasm_memory()`, `wasm_memory_size()`, `wasm_memory_grow()`, `wasm_read()`, `wasm_write()`, `wasm_read_string()`, `wasm_write_string()` |
 | Imports | `wasm_func()`, nested `imports` list, `caller` argument with memory access |
 | Limits | `wasm_limits()` (memory, frames, stack, timeout), the `nanowasm.limits` option, Ctrl-C |
+| WASI | `wasm_wasi()`, `wasm_instantiate(wasi = )`, `wasm_wasi_start()`, `wasm_wasi_output()`, `wasm_run()`: preview 1 in R, with preopened directories (added 2026-10-01, M6) |
 | Conditions | the full class tree in design §8 |
 | Wasm features | MVP + bulk memory, reference types (inside the module only), multi-value, tail calls, extended const, multi-memory, name section |
 | Platforms | Linux, macOS, Windows (Rtools), R ≥ 4.3 |
 
 ### Out of scope (explicitly deferred)
 
-WASI (any subset), SIMD, exception handling, threads/shared memory,
+SIMD, exception handling, threads/shared memory, WASI preview 2 and sockets,
 `funcref`/`externref` at the R boundary, lossless i64, re-entrant callbacks,
 linking instances to each other, allocator helpers, memory indexing sugar,
 performance tuning.
@@ -257,9 +258,40 @@ Should-have:
 
 ---
 
+### M6: WASI
+
+Added on 2026-10-01 at the maintainer's request: WASI lands before 0.1.0,
+with preopened directories. Tracked in
+[milestone M6](https://github.com/pedrobtz/nanowasm/milestone/7) (issues #52–#56).
+
+- [x] Core: `wasm_wasi()`, `wasm_instantiate(wasi = )` (links all 46
+      preview-1 functions; calls a reactor's `_initialize`),
+      `wasm_wasi_start()` (exit status via `proc_exit`), `wasm_wasi_output()`,
+      `wasm_run()`. (#52)
+- [x] Arguments, environment, clocks, `random_get` (R's RNG), `poll_oneoff`
+      sleeps, `sched_yield`; stdin from character or raw; stdout/stderr to the
+      console (UTF-8-safe), captured or discarded. (#53)
+- [x] Preopened directories (`dirs`), read-only unless `writable = TRUE`;
+      open/read/write/pread/pwrite/seek/tell/readdir/stat/truncate/mkdir/
+      rmdir/unlink/rename/set-times; no escape through `..`, absolute paths
+      or symlinks. (#54)
+- [x] Test programs in C built with a pinned wasi-sdk 34
+      (`tools/build-wasi-fixtures.sh`, downloaded to a temporary directory),
+      plus a WAT reactor and a generated WAT probe that re-exports every WASI
+      function for direct tests; 286 WASI expectations, `R/wasi.R` 98%
+      covered. toywasm's own 1 MB WASI build runs inside nanowasm (checked
+      locally). (#55)
+- [x] Docs: vignette section, README, `?wasm_wasi`/`?wasm_run` examples
+      (`hello-wasi.wasm`, `cat-wasi.wasm`), a `wc` WASI example in the
+      pkgdown article, design §10. (#56)
+
+**Exit:** WASI programs run on Linux, macOS and Windows with every check green.
+
+---
+
 ## 3. Release checklist (0.1.0)
 
-- [ ] All must-have boxes in M0–M5 are ticked.
+- [ ] All must-have boxes in M0–M6 are ticked.
 - [ ] The exported functions match §1 exactly. No extra exports, and every
       one is documented.
 - [ ] `devtools::check()` 0/0/0 locally, and the r-actions `R-CMD-check`

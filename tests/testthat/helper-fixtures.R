@@ -16,3 +16,12 @@ skip_if_signals_unreliable <- function() {
   maps <- if (file.exists("/proc/self/maps")) readLines("/proc/self/maps", warn = FALSE) else character()
   skip_if(any(grepl("vgpreload", maps, fixed = TRUE)), "running under valgrind")
 }
+
+# A temporary directory removed when the calling test ends.
+withr_tempdir <- function(env = parent.frame()) {
+  dir <- tempfile()
+  dir.create(dir)
+  dir <- normalizePath(dir, winslash = "/")
+  do.call(on.exit, list(substitute(unlink(dir, recursive = TRUE), list(dir = dir)), add = TRUE), envir = env)
+  dir
+}

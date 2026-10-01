@@ -32,6 +32,11 @@
 #'
 #' Pressing Ctrl-C during a call signals R's usual `interrupt` condition.
 #'
+#' A WASI program that calls `exit()` stops its WebAssembly call with a
+#' `nanowasm_host_error` whose `parent` has class `nanowasm_wasi_exit` and an
+#' exit `status`; [wasm_wasi_start()] and [wasm_run()] turn it into the
+#' returned status.
+#'
 #' @name nanowasm-conditions
 #' @examples
 #' mod <- wasm_module(system.file("extdata", "add.wasm", package = "nanowasm"))
