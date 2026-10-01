@@ -299,8 +299,10 @@ one PR each.
 - [x] `wasm_stats()`: bytes allocated for the instance (current, peak,
       limit; peak tracking turned on in `toywasm_config.h`), and cumulative
       counts of runs, calls, host calls and branches. (#59)
-- [ ] Traps name the function they happened in (name section, else
-      `func[N]`) and carry the call stack as `$backtrace`. (#60)
+- [x] Traps name the function they happened in (name section, else export
+      or import name, else `func[N]`) and carry `func`, `backtrace`
+      (innermost first, at most 64) and `depth`; so do timeouts and host
+      errors. (#60)
 - [ ] Exception handling (the current proposal), for C++ exceptions and
       `setjmp`/`longjmp` built with `-mllvm -wasm-use-legacy-eh=false`;
       the legacy encoding fails validation cleanly. (#61)

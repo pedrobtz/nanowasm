@@ -32,7 +32,7 @@ test_that("runaway recursion hits the frame limit instead of memory", {
 
 test_that("trap messages are readable", {
   inst <- fixture_instance("traps")
-  expect_error(inst$div_s(1L, 0L), "WebAssembly trap: integer divide by zero.", fixed = TRUE)
+  expect_error(inst$div_s(1L, 0L), "WebAssembly trap in `div_s`: integer divide by zero.", fixed = TRUE)
 })
 
 test_that("an instance stays usable after a trap", {

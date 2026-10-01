@@ -449,9 +449,12 @@ nanowasm_error
   `Rf_error` longjmps out of C paths that hold toywasm resources. The
   condition's `call` is the user's call (`inst$add(1L)`, not an internal
   helper).
-- The name of the function that trapped (from the name section) is not
-  reported yet. `detail` carries toywasm's own message, which often includes
-  the code offset.
+- Traps, timeouts and host errors carry `func`, `backtrace` (innermost
+  first, at most 64 frames) and `depth`. The frames are copied from the
+  exec context before it is cleared, and names are resolved with toywasm's
+  `nametable` (name section, then export name), then the import name, then
+  `func[N]`. A trap's message names its function. `detail` keeps toywasm's
+  own message.
 - Ctrl-C re-signals base R's `interrupt` condition rather than a
   `nanowasm_*` class.
 

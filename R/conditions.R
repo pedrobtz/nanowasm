@@ -19,6 +19,14 @@
 #'   and `detail` holds the interpreter's own message. Subclasses:
 #'   `nanowasm_stack_exhausted` (call or value stack limit) and
 #'   `nanowasm_out_of_bounds` (memory or table access out of bounds).
+#'
+#'   A trap also says where it happened: `func` is the name of the function
+#'   that trapped, `backtrace` the names of the functions on the call stack,
+#'   innermost first (at most 64), and `depth` the full depth of the stack.
+#'   Names come from the module's name section (wat2wasm's `--debug-names`,
+#'   or a compiler's debug information), else from its exports and
+#'   imports, else they are `func[N]`. Timeouts and errors in imported R
+#'   functions carry the same fields.
 #' * `nanowasm_memory_limit`: the instance reached its memory limit (see
 #'   [wasm_limits()]), or the interpreter could not allocate memory.
 #' * `nanowasm_timeout`: a call ran longer than its time limit. `elapsed` and
