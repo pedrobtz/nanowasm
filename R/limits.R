@@ -95,6 +95,6 @@ print.nanowasm_limits <- function(x, ...) {
 
 format_bytes <- function(x) {
   units <- c("bytes", "KiB", "MiB", "GiB", "TiB")
-  i <- max(1, min(length(units), floor(log(x, 1024)) + 1))
+  i <- if (x < 1) 1 else max(1, min(length(units), floor(log(x, 1024)) + 1))
   paste(format(x / 1024^(i - 1), digits = 3), units[i])
 }

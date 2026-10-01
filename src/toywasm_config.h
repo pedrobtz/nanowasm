@@ -36,9 +36,10 @@
 #define TOYWASM_USE_LOCALTYPE_CELLIDX
 /* #undef TOYWASM_PREALLOC_SHARED_MEMORY */
 
-/* On: the per-instance memory limit is enforced through heap tracking. */
+/* On: the per-instance memory limit is enforced through heap tracking, and
+   wasm_stats() reports the peak. */
 #define TOYWASM_ENABLE_HEAP_TRACKING
-/* #undef TOYWASM_ENABLE_HEAP_TRACKING_PEAK */
+#define TOYWASM_ENABLE_HEAP_TRACKING_PEAK
 
 /* Off: nanowasm never re-encodes modules. */
 /* #undef TOYWASM_ENABLE_WRITER */

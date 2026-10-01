@@ -152,6 +152,16 @@ run_finish(struct exec_context *ctx, struct nw_instance *ni, int ret,
         }
 }
 
+/* Add a finished run's counters to the instance's totals. */
+static void
+run_account(struct nw_instance *ni, const struct exec_context *ctx)
+{
+        ni->runs += 1;
+        ni->calls += (double)ctx->stats.call;
+        ni->host_calls += (double)ctx->stats.host_call;
+        ni->branches += (double)ctx->stats.branch;
+}
+
 static SEXP
 run_failure(const struct nw_instance *ni, const struct run_result *rr,
             const char *what)
@@ -261,6 +271,7 @@ nw_instantiate(SEXP modptr, SEXP limits, SEXP funcs)
         ni->busy = true;
         run_init(&ctx, ni);
         run_finish(&ctx, ni, instance_execute_init(&ctx), &rr);
+        run_account(ni, &ctx);
         exec_context_clear(&ctx);
         ni->busy = false;
         SEXP host_failure = nw_finish_run(ni);
@@ -471,6 +482,7 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
         if (rr.ret == 0) {
                 exec_pop_vals(&ctx, rt, results);
         }
+        run_account(ni, &ctx);
         exec_context_clear(&ctx);
         ni->busy = false;
         SEXP host_failure = nw_finish_run(ni);
@@ -576,4 +588,34 @@ nw_global_set(SEXP instptr, SEXP name, SEXP value)
         }
         global_set(g, &v);
         return R_NilValue;
+}
+
+/* list(memory, memory_peak, memory_limit, runs, calls, host_calls,
+   branches); sizes in bytes, counts as doubles. */
+SEXP
+nw_stats(SEXP instptr)
+{
+        struct nw_instance *ni = nw_instance_get(instptr);
+        const char *names[] = {"memory",     "memory_peak", "memory_limit",
+                               "runs",       "calls",       "host_calls",
+                               "branches"};
+        double values[] = {
+                (double)ni->mctx.allocated,
+                (double)ni->mctx.peak,
+                ni->mctx.limit == SIZE_MAX ? R_PosInf : (double)ni->mctx.limit,
+                ni->runs,
+                ni->calls,
+                ni->host_calls,
+                ni->branches,
+        };
+        int n = (int)(sizeof(values) / sizeof(values[0]));
+        SEXP res = PROTECT(Rf_allocVector(REALSXP, n));
+        SEXP nms = PROTECT(Rf_allocVector(STRSXP, n));
+        for (int i = 0; i < n; i++) {
+                REAL(res)[i] = values[i];
+                SET_STRING_ELT(nms, i, Rf_mkChar(names[i]));
+        }
+        Rf_setAttrib(res, R_NamesSymbol, nms);
+        UNPROTECT(2);
+        return res;
 }

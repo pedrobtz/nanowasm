@@ -30,6 +30,7 @@ reference:
       - wasm_instantiate
       - wasm_global
       - wasm_limits
+      - wasm_stats
   - title: Linear memory
     desc: Move data between R and an instance's memory.
     contents:
