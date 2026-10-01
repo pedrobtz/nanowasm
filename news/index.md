@@ -48,6 +48,10 @@ Development version, heading for the first release (0.1.0).
   pass, standard streams (console, captured or discarded), R’s clocks
   and random numbers, and files only inside the directories you grant,
   read-only unless `writable = TRUE`.
+- [`wasm_stats()`](https://pedrobtz.github.io/nanowasm/reference/wasm_stats.md)
+  reports an instance’s memory use (current, peak and limit) and how
+  much work it has done (runs, function calls, calls to imports,
+  branches).
 - [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md)
   bounds an instance’s memory, call depth, value stack and time per
   call; Ctrl-C interrupts a running call.

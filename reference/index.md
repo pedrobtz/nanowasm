@@ -23,6 +23,8 @@ Instantiate a module and call its functions.
   : Read and write an instance's exported globals
 - [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md)
   : Resource limits for an instance
+- [`wasm_stats()`](https://pedrobtz.github.io/nanowasm/reference/wasm_stats.md)
+  : Resource usage of an instance
 
 ## Linear memory
 
