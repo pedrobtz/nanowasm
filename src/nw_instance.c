@@ -16,6 +16,7 @@
 
 #include "toywasm/instance.h"
 #include "toywasm/module.h"
+#include "toywasm/name.h"
 #include "toywasm/report.h"
 
 /* 2^53: the largest magnitude below which every integer is a double. */
@@ -70,11 +71,19 @@ nw_instance_get(SEXP ptr)
 
 /* The outcome of running Wasm code, captured before the context is
    cleared: either success or everything needed to describe the failure. */
+/* How many of a trap's innermost frames are kept for its backtrace. */
+#define NW_MAX_BACKTRACE 64
+
 struct run_result {
         int ret; /* 0, a toywasm/errno code, or NW_TIMEDOUT / NW_INTERRUPTED */
         struct trap_info trap;
         char detail[512];
         double elapsed;
+        /* The call stack when the run stopped, innermost first. */
+        uint32_t depth;
+        uint32_t nframes;
+        uint32_t funcidx[NW_MAX_BACKTRACE];
+        const struct module *module[NW_MAX_BACKTRACE];
 };
 
 #define NW_TIMEDOUT (-1000)
@@ -91,6 +100,101 @@ struct run_result {
  * --timeout the same way.
  */
 static const atomic_uint nw_interrupt_raised = 1;
+
+/* Copy the call stack before the context is cleared. */
+static void
+capture_frames(const struct exec_context *ctx, struct run_result *rr)
+{
+        uint32_t depth = ctx->frames.lsize;
+        rr->depth = depth;
+        rr->nframes = depth < NW_MAX_BACKTRACE ? depth : NW_MAX_BACKTRACE;
+        for (uint32_t k = 0; k < rr->nframes; k++) {
+                const struct funcframe *f = &VEC_ELEM(ctx->frames, depth - 1 - k);
+                rr->funcidx[k] = f->funcidx;
+                rr->module[k] = f->instance != NULL ? f->instance->module : NULL;
+        }
+}
+
+/* A function's name: from the name section, else its export name, else
+   its import name, else func[N]. */
+static SEXP
+function_name(struct nametable *table, const struct module *m, uint32_t idx)
+{
+        char buf[64];
+        if (m == NULL || idx == FUNCIDX_INVALID) {
+                return Rf_mkChar("?");
+        }
+        struct name name;
+        nametable_lookup_func(table, m, idx, &name);
+        /* toywasm's names aren't NUL-terminated; "<unknown>" is its
+           placeholder when a function has no name. */
+        if (name.nbytes != 9 || memcmp(name.data, "<unknown>", 9) != 0) {
+                return Rf_mkCharLenCE(name.data, (int)name.nbytes, CE_UTF8);
+        }
+        if (idx < m->nimportedfuncs) {
+                const struct import *im = module_import(m, EXTERNTYPE_FUNC, idx);
+                if (im != NULL) {
+                        snprintf(buf, sizeof(buf), "%.*s.%.*s",
+                                 (int)im->module_name.nbytes, im->module_name.data,
+                                 (int)im->name.nbytes, im->name.data);
+                        return Rf_mkCharCE(buf, CE_UTF8);
+                }
+        }
+        snprintf(buf, sizeof(buf), "func[%u]", (unsigned)idx);
+        return Rf_mkChar(buf);
+}
+
+/* Add the backtrace of a run to a failure: `func` (innermost),
+   `backtrace` (innermost first, at most NW_MAX_BACKTRACE) and `depth`. For
+   a trap, the message says where it happened. */
+static SEXP
+add_backtrace(SEXP failure, const struct run_result *rr, bool trap)
+{
+        if (rr->nframes == 0) {
+                return failure;
+        }
+        PROTECT(failure);
+        SEXP names = PROTECT(Rf_allocVector(STRSXP, rr->nframes));
+        struct nametable table;
+        nametable_init(&table);
+        for (uint32_t k = 0; k < rr->nframes; k++) {
+                SET_STRING_ELT(names, k,
+                               function_name(&table, rr->module[k], rr->funcidx[k]));
+        }
+        nametable_clear(&table);
+
+        SEXP fields = VECTOR_ELT(failure, 2);
+        SEXP old_names = Rf_getAttrib(fields, R_NamesSymbol);
+        R_xlen_t n = XLENGTH(fields);
+        SEXP nf = PROTECT(Rf_allocVector(VECSXP, n + 3));
+        SEXP nn = PROTECT(Rf_allocVector(STRSXP, n + 3));
+        for (R_xlen_t i = 0; i < n; i++) {
+                SET_VECTOR_ELT(nf, i, VECTOR_ELT(fields, i));
+                SET_STRING_ELT(nn, i, STRING_ELT(old_names, i));
+        }
+        SET_VECTOR_ELT(nf, n, Rf_ScalarString(STRING_ELT(names, 0)));
+        SET_STRING_ELT(nn, n, Rf_mkChar("func"));
+        SET_VECTOR_ELT(nf, n + 1, names);
+        SET_STRING_ELT(nn, n + 1, Rf_mkChar("backtrace"));
+        SET_VECTOR_ELT(nf, n + 2, Rf_ScalarReal((double)rr->depth));
+        SET_STRING_ELT(nn, n + 2, Rf_mkChar("depth"));
+        Rf_setAttrib(nf, R_NamesSymbol, nn);
+        SET_VECTOR_ELT(failure, 2, nf);
+
+        if (trap) {
+                /* "WebAssembly trap: x." -> "WebAssembly trap in `f`: x." */
+                const char *msg = CHAR(STRING_ELT(VECTOR_ELT(failure, 1), 0));
+                const char *rest = strchr(msg, ':');
+                if (rest != NULL) {
+                        char buf[1024];
+                        snprintf(buf, sizeof(buf), "WebAssembly trap in `%s`%s",
+                                 Rf_translateCharUTF8(STRING_ELT(names, 0)), rest);
+                        SET_VECTOR_ELT(failure, 1, Rf_mkString(buf));
+                }
+        }
+        UNPROTECT(4);
+        return failure;
+}
 
 static void
 run_init(struct exec_context *ctx, struct nw_instance *ni)
@@ -129,6 +233,7 @@ run_finish(struct exec_context *ctx, struct nw_instance *ni, int ret,
                         if (has_deadline && now - start > ni->timeout) {
                                 rr->ret = NW_TIMEDOUT;
                                 rr->elapsed = now - start;
+                                capture_frames(ctx, rr);
                                 return;
                         }
                         if (now - last_check >= NW_INTERRUPT_CHECK_SECONDS) {
@@ -136,6 +241,7 @@ run_finish(struct exec_context *ctx, struct nw_instance *ni, int ret,
                                 if (!R_ToplevelExec(check_user_interrupt,
                                                     NULL)) {
                                         rr->ret = NW_INTERRUPTED;
+                                        capture_frames(ctx, rr);
                                         return;
                                 }
                         }
@@ -143,6 +249,7 @@ run_finish(struct exec_context *ctx, struct nw_instance *ni, int ret,
                 ret = instance_execute_handle_restart_once(ctx, ret);
         }
         rr->ret = ret;
+        capture_frames(ctx, rr);
         if (ret == ETOYWASMTRAP) {
                 rr->trap = ctx->trap;
                 const char *msg = report_getmessage(ctx->report);
@@ -168,9 +275,9 @@ run_failure(const struct nw_instance *ni, const struct run_result *rr,
 {
         switch (rr->ret) {
         case ETOYWASMTRAP:
-                return nw_fail_trap(&rr->trap, rr->detail);
+                return add_backtrace(nw_fail_trap(&rr->trap, rr->detail), rr, true);
         case NW_TIMEDOUT:
-                return nw_fail_timeout(rr->elapsed, ni->timeout);
+                return add_backtrace(nw_fail_timeout(rr->elapsed, ni->timeout), rr, false);
         case NW_INTERRUPTED:
                 return nw_fail_interrupt();
         default:
@@ -277,7 +384,7 @@ nw_instantiate(SEXP modptr, SEXP limits, SEXP funcs)
         SEXP host_failure = nw_finish_run(ni);
         if (host_failure != NULL) {
                 UNPROTECT(1);
-                return host_failure;
+                return add_backtrace(host_failure, &rr, false);
         }
         if (rr.ret != 0) {
                 UNPROTECT(1);
@@ -487,7 +594,7 @@ nw_call(SEXP instptr, SEXP name, SEXP args)
         ni->busy = false;
         SEXP host_failure = nw_finish_run(ni);
         if (host_failure != NULL) {
-                return host_failure;
+                return add_backtrace(host_failure, &rr, false);
         }
         if (rr.ret != 0) {
                 snprintf(msg, sizeof(msg), "Could not call `%s`", fname);

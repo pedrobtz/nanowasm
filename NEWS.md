@@ -26,6 +26,8 @@ Development version, heading for the first release (0.1.0).
   branches).
 * `wasm_limits()` bounds an instance's memory, call depth, value stack and
   time per call; Ctrl-C interrupts a running call.
+* A trap names the function it happened in, and its condition carries the
+  WebAssembly call stack (`func`, `backtrace`, `depth`).
 * Every failure is a classed condition (`nanowasm_trap`,
   `nanowasm_timeout`, `nanowasm_host_error`, ...); see
   `?nanowasm-conditions`.
