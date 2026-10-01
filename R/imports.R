@@ -178,7 +178,7 @@ plural_kind <- function(kind) {
 host_wrapper <- function(f, key, module) {
   fn <- f$fn
   has_caller <- f$has_caller
-  function(args, self) {
+  wrapper <- function(args, self) {
     tryCatch(
       {
         if (has_caller) {
@@ -196,6 +196,10 @@ host_wrapper <- function(f, key, module) {
       }
     )
   }
+  # Internal: WASI functions take i64 arguments beyond 2^53 as rounded
+  # doubles rather than failing (see src/nw_host.c).
+  if (isTRUE(f$lossy_i64)) attr(wrapper, "nanowasm_lossy_i64") <- TRUE
+  wrapper
 }
 
 new_caller <- function(self, module) {

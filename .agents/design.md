@@ -28,7 +28,7 @@ this file in the same PR.
 - Speed. toywasm is an interpreter that runs the binary in place. It is
   small and portable, and slower than JIT runtimes. If users need
   throughput, the answer is a different backend package, not tuning this one.
-- WASI as a default. A minimal, opt-in WASI subset may come later (§10).
+- WASI as a default. WASI preview 1 is opt-in per instance (§10).
 - Threads, shared memory, the component model and dynamic linking.
 - Compiling to wasm. Users bring `.wasm` files built with Emscripten,
   wasi-sdk, Rust or `wat2wasm`.
@@ -469,23 +469,74 @@ nanowasm_error
 - The docs state plainly that this is a *robustness* sandbox for untrusted
   *computations*, not a security boundary audited for hostile code.
 
-## 10. Opt-in WASI subset (later)
+## 10. WASI (preview 1)
 
-Many real modules (wasi-sdk, Rust `wasm32-wasip1`) import a few WASI calls
-even for pure computation. The plan is a helper written **in R, on top of the
-host-function API**, not toywasm's `libwasi`:
+Most published WebAssembly programs (wasi-sdk C, Rust `wasm32-wasip1`) import
+`wasi_snapshot_preview1`. nanowasm implements it **in R, on top of
+`wasm_func()`** (`R/wasi.R`), not with toywasm's `libwasi`:
+
+- `libwasi` is about 6,600 lines of POSIX code: real files, sockets and
+  direct `stdout` writes. Windows isn't supported (yamt/toywasm#281 has been
+  open since January 2025), it bypasses the sandbox, and CRAN rejects
+  direct `stdout` writes.
+- In R every capability is explicit. Output goes through R's console,
+  files go through R connections that work on all three OSes, and random
+  numbers come from R's generator, so `set.seed()` works. Host calls cost R
+  overhead, but WASI calls are I/O-sized.
+
+API:
 
 ```r
-wasi <- wasm_wasi(args = character(), env = character(), stdout = "console")
-inst <- wasm_instantiate(mod, imports = wasi$imports)
+wasi <- wasm_wasi(args, env, stdin, stdout = "console", stderr = "console",
+                  dirs = c("/data" = host_path), writable = FALSE, program = "main")
+inst <- wasm_instantiate(mod, imports, limits, wasi = wasi)  # calls _initialize for reactors
+wasm_wasi_start(inst)                                       # runs _start, returns the exit status
+wasm_wasi_output(wasi, "stdout")                            # captured output
+wasm_run(mod, args, env, stdin, dirs, writable, ...)        # all of the above; captures by default
 ```
 
-It covers `fd_write` (stdout/stderr to the R console), `proc_exit` (→ a
-`nanowasm_exit` condition with `$status`), `args_*`, `environ_*`,
-`clock_time_get`, `random_get` (from R's RNG, so `set.seed` works), and stubs
-returning `ENOSYS` for the rest. No filesystem. Because it is R code on the
-public API, it stays inside the sandbox model and doubles as a test of
-that API.
+What a program gets:
+
+- **All 46 preview-1 functions are linked**, so any program instantiates.
+  Unsupported ones return `ENOSYS` (`proc_raise`) or `ENOTSUP` (sockets,
+  `path_link`/`symlink`/`readlink`, `fd_allocate`).
+- **Arguments and environment:** only what's passed, with `argv[0]` set to
+  `program`.
+- **Standard streams:** stdin from a character vector (as lines) or raw
+  vector. stdout and stderr go to the console (written as they arrive,
+  holding back an incomplete UTF-8 character), are captured, or are
+  discarded.
+- **Clocks and randomness:** realtime (`Sys.time()`), monotonic and CPU
+  (`proc.time()`), resolution 1 µs. `poll_oneoff` sleeps for clock
+  subscriptions and reports stdio as always ready. `random_get` uses R's
+  RNG.
+- **Files:** each entry in `dirs` is a preopened directory (fd 3, 4, …)
+  named by its guest path. A single unnamed directory is `.`, which wasi-libc
+  uses for relative paths. Paths resolve component by component against the
+  directory fd: absolute paths, drive letters and backslashes are refused, a
+  `..` that would leave the root is `NOTCAPABLE`, and the deepest existing
+  ancestor is `normalizePath()`ed and must stay under the root, which stops
+  symlink escapes. Files are R `file()` connections, with nanowasm keeping
+  each fd's position and seeking before every read or write.
+- **Read-only by default:** without `writable = TRUE`, any open with write
+  intent (the `FD_WRITE` right, create, truncate or append) and any
+  create/rename/unlink/mkdir/rmdir/set-size/set-times is `NOTCAPABLE`.
+  "All rights" (`-1`) alone isn't taken as write intent.
+- **Faults and exit:** a pointer outside the module's memory makes the call
+  return `EFAULT`. `proc_exit` flushes output and unwinds with a
+  `nanowasm_wasi_exit` condition (seen as the `parent` of a
+  `nanowasm_host_error`), which `wasm_wasi_start()` turns into the status.
+- **One environment per instance:** a `wasm_wasi()` holds open files and
+  output, so reusing it is an error.
+- **Large `i64` arguments:** a WASI function receives `i64` arguments beyond
+  ±2^53 (nanosecond timestamps, some rights masks) as rounded doubles, not
+  as a `nanowasm_precision_error`. This is an internal flag on the import
+  (the `nanowasm_lossy_i64` attribute on its wrapper, read in
+  `src/nw_host.c`), not part of `wasm_func()`'s API.
+
+Known gaps: `wasi_unstable` (the pre-preview-1 module name), sockets, links,
+access times, file rights beyond read/write, and blocking stdin (stdin is
+fixed when the environment is created).
 
 ## 11. Testing strategy
 

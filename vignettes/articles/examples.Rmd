@@ -131,6 +131,35 @@ wasm_global(b, "count") <- 100L
 b$tick()
 ```
 
+## A command-line program, via WASI
+
+Programs written for an operating system, rather than as libraries, run
+through WASI. `wc.wasm` is a small `wc` (line, word and byte counts) written
+in C and compiled with wasi-sdk; its source is next to it. `wasm_run()` gives
+it standard input, arguments and only the directories you grant:
+
+```{r}
+wc <- example_module("wc")
+
+# Standard input.
+wasm_run(wc, stdin = c("the quick brown fox", "jumps over the lazy dog"))$stdout
+
+# Files in a directory the program is allowed to read.
+docs <- file.path(tempdir(), "docs")
+dir.create(docs, showWarnings = FALSE)
+writeLines(c("one", "two words", "three more words"), file.path(docs, "a.txt"))
+writeLines(rep("lorem ipsum", 100), file.path(docs, "b.txt"))
+res <- wasm_run(wc, args = c("a.txt", "b.txt"), dirs = docs)
+cat(res$stdout)
+```
+
+Anything outside the granted directory doesn't exist as far as the program
+is concerned:
+
+```{r}
+wasm_run(wc, args = c("a.txt", "../../etc/passwd"), dirs = docs)
+```
+
 ## Running code you don't trust
 
 `untrusted.wasm` loops forever, recurses without end and grabs all the

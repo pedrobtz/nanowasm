@@ -16,6 +16,8 @@ called with \code{inst$name(...)} or \code{\link[=wasm_call]{wasm_call()}}.
 \item \code{\link[=wasm_memory]{wasm_memory()}} and \code{\link[=wasm_read]{wasm_read()}} / \code{\link[=wasm_write]{wasm_write()}} move data through
 linear memory, and \code{\link[=wasm_global]{wasm_global()}} reads and sets globals.
 \item \code{\link[=wasm_func]{wasm_func()}} turns an R function into an import.
+\item \code{\link[=wasm_run]{wasm_run()}} and \code{\link[=wasm_wasi]{wasm_wasi()}} run WASI programs, with only the
+arguments, environment and directories you grant.
 \item \code{\link[=wasm_limits]{wasm_limits()}} bounds memory, recursion and time, and
 \link{nanowasm-conditions} lists the errors nanowasm signals.
 }

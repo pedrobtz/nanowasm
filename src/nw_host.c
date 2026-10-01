@@ -80,9 +80,14 @@ host_body(void *data)
         struct val *vals =
                 (struct val *)R_alloc(pt->ntypes + 1, sizeof(struct val));
         vals_from_cells(vals, hc->params, pt);
+        const bool lossy = Rf_getAttrib(b->fn, Rf_install("nanowasm_lossy_i64")) !=
+                           R_NilValue;
         SEXP args = PROTECT(Rf_allocVector(VECSXP, pt->ntypes));
         for (uint32_t i = 0; i < pt->ntypes; i++) {
                 SEXP v = nw_val_to_sexp(&vals[i], pt->types[i]);
+                if (v == NULL && lossy) {
+                        v = Rf_ScalarReal((double)(int64_t)vals[i].u.i64);
+                }
                 if (v == NULL) {
                         char msg[512];
                         snprintf(msg, sizeof(msg),

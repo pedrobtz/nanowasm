@@ -37,6 +37,11 @@ reference:
     desc: Let a module call R.
     contents:
       - wasm_func
+  - title: WASI
+    desc: Run programs compiled for the WebAssembly System Interface.
+    contents:
+      - wasm_run
+      - wasm_wasi
   - title: Errors
     contents:
       - nanowasm-conditions
