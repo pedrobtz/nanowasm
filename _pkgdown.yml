@@ -16,6 +16,7 @@ articles:
     contents:
       - nanowasm
       - articles/examples
+      - articles/real-world
 
 reference:
   - title: Modules
