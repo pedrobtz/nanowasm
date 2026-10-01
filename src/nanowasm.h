@@ -42,6 +42,9 @@ struct nw_instance {
         double timeout; /* seconds per call; <= 0 or infinite: none */
         bool busy;      /* running; toywasm instances are not re-entrant */
 
+        /* Totals for wasm_stats(), summed from each run's exec_stat. */
+        double runs, calls, host_calls, branches;
+
         /* Imports (nw_host.c). */
         SEXP self; /* this instance's external pointer; not protected, only
                       used while a call keeps it alive */
@@ -92,6 +95,7 @@ SEXP nw_instantiate(SEXP modptr, SEXP limits, SEXP funcs);
 SEXP nw_call(SEXP instptr, SEXP name, SEXP args);
 SEXP nw_global_get(SEXP instptr, SEXP name);
 SEXP nw_global_set(SEXP instptr, SEXP name, SEXP value);
+SEXP nw_stats(SEXP instptr);
 
 /* nw_memory.c */
 SEXP nw_memory_index(SEXP instptr, SEXP name);

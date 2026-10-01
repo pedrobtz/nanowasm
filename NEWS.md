@@ -21,6 +21,9 @@ Development version, heading for the first release (0.1.0).
   environment you pass, standard streams (console, captured or discarded),
   R's clocks and random numbers, and files only inside the directories you
   grant, read-only unless `writable = TRUE`.
+* `wasm_stats()` reports an instance's memory use (current, peak and limit)
+  and how much work it has done (runs, function calls, calls to imports,
+  branches).
 * `wasm_limits()` bounds an instance's memory, call depth, value stack and
   time per call; Ctrl-C interrupts a running call.
 * Every failure is a classed condition (`nanowasm_trap`,

@@ -289,9 +289,33 @@ with preopened directories. Tracked in
 
 ---
 
+### M7: Diagnostics and exceptions
+
+Added on 2026-10-01: the three toywasm capabilities that were easiest to
+expose, reviewed together with the maintainer. Tracked in
+[milestone M7](https://github.com/pedrobtz/nanowasm/milestone/8) (issues #59–#61),
+one PR each.
+
+- [x] `wasm_stats()`: bytes allocated for the instance (current, peak,
+      limit; peak tracking turned on in `toywasm_config.h`), and cumulative
+      counts of runs, calls, host calls and branches. (#59)
+- [ ] Traps name the function they happened in (name section, else
+      `func[N]`) and carry the call stack as `$backtrace`. (#60)
+- [ ] Exception handling (the current proposal), for C++ exceptions and
+      `setjmp`/`longjmp` built with `-mllvm -wasm-use-legacy-eh=false`;
+      the legacy encoding fails validation cleanly. (#61)
+
+Left for after 0.1.0, by the same review: linking instances to each
+other, tables and function references from R, SIMD, and interpreter
+speed switches (`musttail`, jump cache).
+
+**Exit:** all three merged with every check green.
+
+---
+
 ## 3. Release checklist (0.1.0)
 
-- [ ] All must-have boxes in M0–M6 are ticked.
+- [ ] All must-have boxes in M0–M7 are ticked.
 - [ ] The exported functions match §1 exactly. No extra exports, and every
       one is documented.
 - [ ] `devtools::check()` 0/0/0 locally, and the r-actions `R-CMD-check`
