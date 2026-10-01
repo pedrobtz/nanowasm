@@ -53,6 +53,7 @@
 <code><a href="../reference/wasm_stats.html">wasm_stats()</a></code> reports an instance’s memory use (current, peak and limit) and how much work it has done (runs, function calls, calls to imports, branches).</li>
 <li>
 <code><a href="../reference/wasm_limits.html">wasm_limits()</a></code> bounds an instance’s memory, call depth, value stack and time per call; Ctrl-C interrupts a running call.</li>
+<li>A trap names the function it happened in, and its condition carries the WebAssembly call stack (<code>func</code>, <code>backtrace</code>, <code>depth</code>).</li>
 <li>Every failure is a classed condition (<code>nanowasm_trap</code>, <code>nanowasm_timeout</code>, <code>nanowasm_host_error</code>, …); see <code>?nanowasm-conditions</code>.</li>
 <li>Modules run in the bundled toywasm interpreter (v76.0.0), so no system WebAssembly runtime is needed.</li>
 <li>

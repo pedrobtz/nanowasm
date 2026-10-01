@@ -65,7 +65,14 @@ between R and WebAssembly (<code>funcref</code>, <code>externref</code>, <code>v
 (<code>"div_by_zero"</code>, <code>"unreachable"</code>, <code>"out_of_bounds_memory_access"</code>, ...)
 and <code>detail</code> holds the interpreter's own message. Subclasses:
 <code>nanowasm_stack_exhausted</code> (call or value stack limit) and
-<code>nanowasm_out_of_bounds</code> (memory or table access out of bounds).</p></li>
+<code>nanowasm_out_of_bounds</code> (memory or table access out of bounds).</p>
+<p>A trap also says where it happened: <code>func</code> is the name of the function
+that trapped, <code>backtrace</code> the names of the functions on the call stack,
+innermost first (at most 64), and <code>depth</code> the full depth of the stack.
+Names come from the module's name section (wat2wasm's <code>--debug-names</code>,
+or a compiler's debug information), else from its exports and
+imports, else they are <code>func[N]</code>. Timeouts and errors in imported R
+functions carry the same fields.</p></li>
 <li><p><code>nanowasm_memory_limit</code>: the instance reached its memory limit (see
 <code><a href="wasm_limits.html">wasm_limits()</a></code>), or the interpreter could not allocate memory.</p></li>
 <li><p><code>nanowasm_timeout</code>: a call ran longer than its time limit. <code>elapsed</code> and

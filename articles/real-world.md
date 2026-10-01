@@ -284,7 +284,7 @@ c(
   hillshade = bench(grid_fn("hillshade", volcano, 5, 315, 45))
 )
 #> sqlite_query   javascript     markdown    hillshade 
-#>         0.02         0.06         0.01         0.03
+#>         0.01         0.05         0.01         0.03
 ```
 
 Times are in seconds, and include loading each module: SQLite and

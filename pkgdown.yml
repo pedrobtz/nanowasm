@@ -5,7 +5,7 @@ articles:
   articles/examples: examples.html
   nanowasm: nanowasm.html
   articles/real-world: real-world.html
-last_built: 2026-10-01T10:36Z
+last_built: 2026-10-01T10:54Z
 urls:
   reference: https://pedrobtz.github.io/nanowasm/reference
   article: https://pedrobtz.github.io/nanowasm/articles
