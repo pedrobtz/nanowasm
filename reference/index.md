@@ -44,6 +44,17 @@ Let a module call R.
 - [`wasm_func()`](https://pedrobtz.github.io/nanowasm/reference/wasm_func.md)
   : Give a module an R function as an import
 
+## WASI
+
+Run programs compiled for the WebAssembly System Interface.
+
+- [`wasm_run()`](https://pedrobtz.github.io/nanowasm/reference/wasm_run.md)
+  : Run a WASI program
+- [`wasm_wasi()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md)
+  [`wasm_wasi_start()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md)
+  [`wasm_wasi_output()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md)
+  : Run WASI programs
+
 ## Errors
 
 - [`nanowasm-conditions`](https://pedrobtz.github.io/nanowasm/reference/nanowasm-conditions.md)

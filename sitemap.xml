@@ -18,5 +18,7 @@
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_limits.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_memory.html</loc></url>
 <url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_module.html</loc></url>
+<url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_run.html</loc></url>
+<url><loc>https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.html</loc></url>
 </urlset>
 

@@ -75,6 +75,10 @@ call.</p></li>
 </ul><p>Out-of-bounds <code><a href="wasm_memory.html">wasm_read()</a></code> and <code><a href="wasm_memory.html">wasm_write()</a></code> calls signal
 <code>nanowasm_out_of_bounds</code> too, as a subclass of <code>nanowasm_argument_error</code>.</p>
 <p>Pressing Ctrl-C during a call signals R's usual <code>interrupt</code> condition.</p>
+<p>A WASI program that calls <code>exit()</code> stops its WebAssembly call with a
+<code>nanowasm_host_error</code> whose <code>parent</code> has class <code>nanowasm_wasi_exit</code> and an
+exit <code>status</code>; <code><a href="wasm_wasi.html">wasm_wasi_start()</a></code> and <code><a href="wasm_run.html">wasm_run()</a></code> turn it into the
+returned status.</p>
     </div>
 
     <div class="section level2">

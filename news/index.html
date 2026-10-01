@@ -47,12 +47,13 @@
 <li>
 <code><a href="../reference/wasm_memory.html">wasm_memory()</a></code> gives access to an instance’s linear memory: <code><a href="../reference/wasm_memory.html">wasm_read()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_write()</a></code> for typed vectors, <code><a href="../reference/wasm_memory.html">wasm_read_string()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_write_string()</a></code> for UTF-8 strings, and <code><a href="../reference/wasm_memory.html">wasm_memory_size()</a></code> / <code><a href="../reference/wasm_memory.html">wasm_memory_grow()</a></code>. <code><a href="../reference/wasm_global.html">wasm_global()</a></code> reads and sets exported globals.</li>
 <li>Modules can import R functions: wrap them with <code><a href="../reference/wasm_func.html">wasm_func()</a></code> and pass them to <code>wasm_instantiate(imports = )</code>. An R function with a <code>caller</code> argument can reach the calling instance’s memory.</li>
+<li>WASI: <code><a href="../reference/wasm_run.html">wasm_run()</a></code> runs programs compiled for the WebAssembly System Interface (preview 1), and <code><a href="../reference/wasm_wasi.html">wasm_wasi()</a></code> / <code>wasm_instantiate(wasi = )</code> / <code><a href="../reference/wasm_wasi.html">wasm_wasi_start()</a></code> give finer control. Programs get the arguments and environment you pass, standard streams (console, captured or discarded), R’s clocks and random numbers, and files only inside the directories you grant, read-only unless <code>writable = TRUE</code>.</li>
 <li>
 <code><a href="../reference/wasm_limits.html">wasm_limits()</a></code> bounds an instance’s memory, call depth, value stack and time per call; Ctrl-C interrupts a running call.</li>
 <li>Every failure is a classed condition (<code>nanowasm_trap</code>, <code>nanowasm_timeout</code>, <code>nanowasm_host_error</code>, …); see <code>?nanowasm-conditions</code>.</li>
 <li>Modules run in the bundled toywasm interpreter (v76.0.0), so no system WebAssembly runtime is needed.</li>
 <li>
-<code><a href="../articles/nanowasm.html">vignette("nanowasm")</a></code> walks through the API, and the example modules <code>add.wasm</code>, <code>fib.wasm</code>, <code>sum.wasm</code> and <code>log.wasm</code> are installed in <code>extdata/</code>.</li>
+<code><a href="../articles/nanowasm.html">vignette("nanowasm")</a></code> walks through the API, and the example modules <code>add.wasm</code>, <code>fib.wasm</code>, <code>sum.wasm</code>, <code>log.wasm</code>, <code>hello-wasi.wasm</code> and <code>cat-wasi.wasm</code> are installed in <code>extdata/</code>.</li>
 </ul></div>
   </main></div>
 

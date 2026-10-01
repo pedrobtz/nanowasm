@@ -8,6 +8,8 @@ called with inst$name(...) or wasm_call().
 wasm_memory() and wasm_read() / wasm_write() move data through
 linear memory, and wasm_global() reads and sets globals.
 wasm_func() turns an R function into an import.
+wasm_run() and wasm_wasi() run WASI programs, with only the
+arguments, environment and directories you grant.
 wasm_limits() bounds memory, recursion and time, and
 nanowasm-conditions lists the errors nanowasm signals.
 
@@ -20,6 +22,8 @@ called with inst$name(...) or wasm_call().
 wasm_memory() and wasm_read() / wasm_write() move data through
 linear memory, and wasm_global() reads and sets globals.
 wasm_func() turns an R function into an import.
+wasm_run() and wasm_wasi() run WASI programs, with only the
+arguments, environment and directories you grant.
 wasm_limits() bounds memory, recursion and time, and
 nanowasm-conditions lists the errors nanowasm signals.
 
@@ -71,6 +75,8 @@ called with <code>inst$name(...)</code> or <code><a href="wasm_instantiate.html"
 <li><p><code><a href="wasm_memory.html">wasm_memory()</a></code> and <code><a href="wasm_memory.html">wasm_read()</a></code> / <code><a href="wasm_memory.html">wasm_write()</a></code> move data through
 linear memory, and <code><a href="wasm_global.html">wasm_global()</a></code> reads and sets globals.</p></li>
 <li><p><code><a href="wasm_func.html">wasm_func()</a></code> turns an R function into an import.</p></li>
+<li><p><code><a href="wasm_run.html">wasm_run()</a></code> and <code><a href="wasm_wasi.html">wasm_wasi()</a></code> run WASI programs, with only the
+arguments, environment and directories you grant.</p></li>
 <li><p><code><a href="wasm_limits.html">wasm_limits()</a></code> bounds memory, recursion and time, and
 <a href="nanowasm-conditions.html">nanowasm-conditions</a> lists the errors nanowasm signals.</p></li>
 </ul></div>

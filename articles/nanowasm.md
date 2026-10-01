@@ -189,6 +189,54 @@ If the R function fails, the WebAssembly call stops with a
 Interrupts, restarts and other jumps out of the R function also unwind
 the WebAssembly call safely, and the instance stays usable.
 
+## Running WASI programs
+
+Programs compiled for WASI, the WebAssembly System Interface (C with
+[wasi-sdk](https://github.com/WebAssembly/wasi-sdk), Rust’s
+`wasm32-wasip1` target, and others), expect a small operating system:
+arguments, environment variables, standard input and output, clocks,
+random numbers and files.
+[`wasm_run()`](https://pedrobtz.github.io/nanowasm/reference/wasm_run.md)
+provides one, implemented in R, and runs the program:
+
+``` r
+
+hello <- example("hello-wasi.wasm")
+res <- wasm_run(hello, args = c("from", "R"), env = c(GREETING = "Hi"))
+res
+#> <nanowasm_run> exit status 0
+#> -- stdout --
+#> Hi from R!
+```
+
+A program sees only what you give it. Files are reachable only inside
+the directories you grant with `dirs`, read-only unless
+`writable = TRUE`:
+
+``` r
+
+dir <- tempfile()
+dir.create(dir)
+writeLines(c("x,y", "1,2"), file.path(dir, "data.csv"))
+
+cat_wasm <- example("cat-wasi.wasm")
+wasm_run(cat_wasm, args = "data.csv", dirs = dir)$stdout
+#> [1] "x,y\n1,2\n"
+wasm_run(cat_wasm, args = "../anything.txt", dirs = dir)
+#> <nanowasm_run> exit status 1
+#> -- stderr --
+#> cat: ../anything.txt: Capabilities insufficient
+```
+
+For more control, build the environment with
+[`wasm_wasi()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md),
+instantiate the module with it, and call
+[`wasm_wasi_start()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md),
+or call the exports of a WASI “reactor” module directly. Random numbers
+come from R’s generator, so
+[`set.seed()`](https://rdrr.io/r/base/Random.html) makes a program
+reproducible.
+
 ## Limits and errors
 
 Every instance runs under limits set by
@@ -235,7 +283,10 @@ validation errors, and errors in imported R functions.
 A module can only affect the outside world through the imports you give
 it, and nanowasm gives it none by default. It has no files, network,
 environment variables, clock or random numbers unless an R function you
-import provides them. What it can consume is bounded:
+import provides them. A WASI environment provides some, and only those
+you ask for: the arguments and environment variables you pass, the
+directories you grant (read-only unless you say otherwise), R’s clocks
+and random numbers, and never sockets. What it can consume is bounded:
 
 - **Memory**: everything the interpreter allocates for an instance
   (memories, tables and call stacks) counts against
@@ -257,13 +308,17 @@ than it needs.
 ## Getting modules
 
 Any toolchain that targets WebAssembly can produce modules for nanowasm,
-as long as the module doesn’t need WASI or other system imports:
+as long as the module needs no imports beyond WASI preview 1 and those
+you provide:
 
 - **The text format**, compiled with
   [wabt](https://github.com/WebAssembly/wabt)’s `wat2wasm`. This is how
   the example modules were made; their sources are installed next to
   them.
 - **C**, with clang:
-  `clang --target=wasm32 -nostdlib -O2 -Wl,--no-entry -Wl,--export-all -o lib.wasm lib.c`.
+  `clang --target=wasm32 -nostdlib -O2 -Wl,--no-entry -Wl,--export-all -o lib.wasm lib.c`
+  for a library, or wasi-sdk’s
+  `clang --target=wasm32-wasip1 -O2 -o prog.wasm prog.c` for a program
+  with the C standard library.
 - **Rust**, with the `wasm32-unknown-unknown` target and a `cdylib`
-  crate.
+  crate, or the `wasm32-wasip1` target for a program.

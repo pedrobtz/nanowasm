@@ -95,13 +95,31 @@ inst$greet()
 #> Hello from WebAssembly!
 ```
 
+Programs compiled for WASI (C with wasi-sdk, Rust’s `wasm32-wasip1`, …)
+run with
+[`wasm_run()`](https://pedrobtz.github.io/nanowasm/reference/wasm_run.md),
+which gives them arguments, environment variables, standard streams,
+clocks, random numbers and only the directories you grant:
+
+``` r
+
+hello <- system.file("extdata", "hello-wasi.wasm", package = "nanowasm")
+wasm_run(hello, args = c("from", "R"), env = c(GREETING = "Hi"))
+#> <nanowasm_run> exit status 0
+#> -- stdout --
+#> Hi from R!
+```
+
 ## Sandbox
 
 A module can only reach the outside world through the imports you give
 it. nanowasm supplies none by default: no files, network, environment
-variables, clocks or randomness. Memory, call depth and running time are
-capped, and traps, stack exhaustion, memory limits and timeouts are
-reported as classed R conditions rather than crashes.
+variables, clocks or randomness. For WASI programs it provides only what
+you pass: arguments, environment variables, the directories you grant
+(read-only by default), and R’s clocks and random numbers; never
+sockets. Memory, call depth and running time are capped, and traps,
+stack exhaustion, memory limits and timeouts are reported as classed R
+conditions rather than crashes.
 
 This makes nanowasm a safe place to run *untrusted computations*. It is
 not a security boundary that has been audited against deliberately

@@ -28,6 +28,12 @@ bundled toywasm interpreter. Start with
 - [`wasm_func()`](https://pedrobtz.github.io/nanowasm/reference/wasm_func.md)
   turns an R function into an import.
 
+- [`wasm_run()`](https://pedrobtz.github.io/nanowasm/reference/wasm_run.md)
+  and
+  [`wasm_wasi()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md)
+  run WASI programs, with only the arguments, environment and
+  directories you grant.
+
 - [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md)
   bounds memory, recursion and time, and
   [nanowasm-conditions](https://pedrobtz.github.io/nanowasm/reference/nanowasm-conditions.md)

@@ -121,11 +121,18 @@
 <span><span class="va">inst</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/wasm_instantiate.html">wasm_instantiate</a></span><span class="op">(</span><span class="va">mod</span>, imports <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>env <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>log <span class="op">=</span> <span class="va">log</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">inst</span><span class="op">$</span><span class="fu">greet</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Hello from WebAssembly!</span></span></code></pre></div>
+<p>Programs compiled for WASI (C with wasi-sdk, Rust’s <code>wasm32-wasip1</code>, …) run with <code><a href="reference/wasm_run.html">wasm_run()</a></code>, which gives them arguments, environment variables, standard streams, clocks, random numbers and only the directories you grant:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">hello</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"hello-wasi.wasm"</span>, package <span class="op">=</span> <span class="st">"nanowasm"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/wasm_run.html">wasm_run</a></span><span class="op">(</span><span class="va">hello</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"from"</span>, <span class="st">"R"</span><span class="op">)</span>, env <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>GREETING <span class="op">=</span> <span class="st">"Hi"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;nanowasm_run&gt; exit status 0</span></span>
+<span><span class="co">#&gt; -- stdout --</span></span>
+<span><span class="co">#&gt; Hi from R!</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="sandbox">Sandbox<a class="anchor" aria-label="anchor" href="#sandbox"></a>
 </h2>
-<p>A module can only reach the outside world through the imports you give it. nanowasm supplies none by default: no files, network, environment variables, clocks or randomness. Memory, call depth and running time are capped, and traps, stack exhaustion, memory limits and timeouts are reported as classed R conditions rather than crashes.</p>
+<p>A module can only reach the outside world through the imports you give it. nanowasm supplies none by default: no files, network, environment variables, clocks or randomness. For WASI programs it provides only what you pass: arguments, environment variables, the directories you grant (read-only by default), and R’s clocks and random numbers; never sockets. Memory, call depth and running time are capped, and traps, stack exhaustion, memory limits and timeouts are reported as classed R conditions rather than crashes.</p>
 <p>This makes nanowasm a safe place to run <em>untrusted computations</em>. It is not a security boundary that has been audited against deliberately hostile code.</p>
 </div>
 </div>

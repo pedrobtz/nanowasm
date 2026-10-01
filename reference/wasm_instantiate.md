@@ -9,7 +9,7 @@ instance's exported functions. `inst$name(...)` is shorthand for
 ## Usage
 
 ``` r
-wasm_instantiate(module, imports = list(), limits = NULL)
+wasm_instantiate(module, imports = list(), limits = NULL, wasi = NULL)
 
 wasm_call(instance, name, ...)
 ```
@@ -38,6 +38,16 @@ wasm_call(instance, name, ...)
   The default is `getOption("nanowasm.limits")`, or
   [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md)
   if that is unset.
+
+- wasi:
+
+  A WASI environment from
+  [`wasm_wasi()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md),
+  for modules that import `wasi_snapshot_preview1`. Its functions are
+  added to `imports` (entries in `imports` take precedence), and a
+  reactor module's `_initialize` is called after instantiation. Run a
+  command module with
+  [`wasm_wasi_start()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md).
 
 - instance:
 

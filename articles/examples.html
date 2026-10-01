@@ -195,12 +195,48 @@ globals. Instances of the same module don’t share state:</p>
 <span><span class="co">#&gt; [1] 101</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="a-command-line-program-via-wasi">A command-line program, via WASI<a class="anchor" aria-label="anchor" href="#a-command-line-program-via-wasi"></a>
+</h2>
+<p>Programs written for an operating system, rather than as libraries,
+run through WASI. <code>wc.wasm</code> is a small <code>wc</code> (line,
+word and byte counts) written in C and compiled with wasi-sdk; its
+source is next to it. <code><a href="../reference/wasm_run.html">wasm_run()</a></code> gives it standard input,
+arguments and only the directories you grant:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wc</span> <span class="op">&lt;-</span> <span class="fu">example_module</span><span class="op">(</span><span class="st">"wc"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Standard input.</span></span>
+<span><span class="fu"><a href="../reference/wasm_run.html">wasm_run</a></span><span class="op">(</span><span class="va">wc</span>, stdin <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"the quick brown fox"</span>, <span class="st">"jumps over the lazy dog"</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">stdout</span></span>
+<span><span class="co">#&gt; [1] "      2       9      44 \n"</span></span>
+<span></span>
+<span><span class="co"># Files in a directory the program is allowed to read.</span></span>
+<span><span class="va">docs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"docs"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">docs</span>, showWarnings <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"one"</span>, <span class="st">"two words"</span>, <span class="st">"three more words"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">docs</span>, <span class="st">"a.txt"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">"lorem ipsum"</span>, <span class="fl">100</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">docs</span>, <span class="st">"b.txt"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wasm_run.html">wasm_run</a></span><span class="op">(</span><span class="va">wc</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a.txt"</span>, <span class="st">"b.txt"</span><span class="op">)</span>, dirs <span class="op">=</span> <span class="va">docs</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">stdout</span><span class="op">)</span></span>
+<span><span class="co">#&gt;       3       6      31 a.txt</span></span>
+<span><span class="co">#&gt;     100     200    1200 b.txt</span></span>
+<span><span class="co">#&gt;     103     206    1231 total</span></span></code></pre></div>
+<p>Anything outside the granted directory doesn’t exist as far as the
+program is concerned:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/wasm_run.html">wasm_run</a></span><span class="op">(</span><span class="va">wc</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a.txt"</span>, <span class="st">"../../etc/passwd"</span><span class="op">)</span>, dirs <span class="op">=</span> <span class="va">docs</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;nanowasm_run&gt; exit status 1</span></span>
+<span><span class="co">#&gt; -- stdout --</span></span>
+<span><span class="co">#&gt;       3       6      31 a.txt</span></span>
+<span><span class="co">#&gt;       3       6      31 total</span></span>
+<span><span class="co">#&gt; -- stderr --</span></span>
+<span><span class="co">#&gt; wc: ../../etc/passwd: Capabilities insufficient</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="running-code-you-dont-trust">Running code you don’t trust<a class="anchor" aria-label="anchor" href="#running-code-you-dont-trust"></a>
 </h2>
 <p><code>untrusted.wasm</code> loops forever, recurses without end and
 grabs all the memory it can. Under <code><a href="../reference/wasm_limits.html">wasm_limits()</a></code> each of
 those ends in an error of its own class, and R carries on:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">untrusted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wasm_instantiate.html">wasm_instantiate</a></span><span class="op">(</span></span>
 <span>  <span class="fu">example_module</span><span class="op">(</span><span class="st">"untrusted"</span><span class="op">)</span>,</span>
 <span>  limits <span class="op">=</span> <span class="fu"><a href="../reference/wasm_limits.html">wasm_limits</a></span><span class="op">(</span>memory <span class="op">=</span> <span class="fl">16</span> <span class="op">*</span> <span class="fl">2</span><span class="op">^</span><span class="fl">20</span>, frames <span class="op">=</span> <span class="fl">1000</span>, timeout <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span></span>
@@ -224,14 +260,14 @@ those ends in an error of its own class, and R carries on:</p>
 WebAssembly specifies (<code>memory.grow</code> returns -1), so
 <code>hog()</code> stops growing at the limit and returns the number of
 pages it managed to get:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pages</span> <span class="op">&lt;-</span> <span class="va">untrusted</span><span class="op">$</span><span class="fu">hog</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">pages</span></span>
 <span><span class="co">#&gt; [1] 255</span></span>
 <span><span class="va">pages</span> <span class="op">*</span> <span class="fl">65536</span> <span class="op">/</span> <span class="fl">2</span><span class="op">^</span><span class="fl">20</span> <span class="co"># MiB</span></span>
 <span><span class="co">#&gt; [1] 15.9375</span></span></code></pre></div>
 <p>The instance is still usable after all of this:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">run_safely</span><span class="op">(</span><span class="va">untrusted</span><span class="op">$</span><span class="fu">spin</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "stopped: time limit"</span></span></code></pre></div>
 </div>

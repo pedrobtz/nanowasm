@@ -56,7 +56,7 @@ instance's exported functions. <code>inst$name(...)</code> is shorthand for
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">wasm_instantiate</span><span class="op">(</span><span class="va">module</span>, imports <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>, limits <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">wasm_instantiate</span><span class="op">(</span><span class="va">module</span>, imports <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>, limits <span class="op">=</span> <span class="cn">NULL</span>, wasi <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">wasm_call</span><span class="op">(</span><span class="va">instance</span>, <span class="va">name</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -79,6 +79,14 @@ ignored. See <code><a href="wasm_exports.html">wasm_imports()</a></code> for wha
 <dt id="arg-limits">limits<a class="anchor" aria-label="anchor" href="#arg-limits"></a></dt>
 <dd><p>Resource limits from <code><a href="wasm_limits.html">wasm_limits()</a></code>. The default is
 <code>getOption("nanowasm.limits")</code>, or <code><a href="wasm_limits.html">wasm_limits()</a></code> if that is unset.</p></dd>
+
+
+<dt id="arg-wasi">wasi<a class="anchor" aria-label="anchor" href="#arg-wasi"></a></dt>
+<dd><p>A WASI environment from <code><a href="wasm_wasi.html">wasm_wasi()</a></code>, for modules that import
+<code>wasi_snapshot_preview1</code>. Its functions are added to <code>imports</code> (entries
+in <code>imports</code> take precedence), and a reactor module's <code>_initialize</code> is
+called after instantiation. Run a command module with
+<code><a href="wasm_wasi.html">wasm_wasi_start()</a></code>.</p></dd>
 
 
 <dt id="arg-instance">instance<a class="anchor" aria-label="anchor" href="#arg-instance"></a></dt>

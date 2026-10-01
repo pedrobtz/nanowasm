@@ -156,6 +156,48 @@ b$tick()
 #> [1] 101
 ```
 
+## A command-line program, via WASI
+
+Programs written for an operating system, rather than as libraries, run
+through WASI. `wc.wasm` is a small `wc` (line, word and byte counts)
+written in C and compiled with wasi-sdk; its source is next to it.
+[`wasm_run()`](https://pedrobtz.github.io/nanowasm/reference/wasm_run.md)
+gives it standard input, arguments and only the directories you grant:
+
+``` r
+
+wc <- example_module("wc")
+
+# Standard input.
+wasm_run(wc, stdin = c("the quick brown fox", "jumps over the lazy dog"))$stdout
+#> [1] "      2       9      44 \n"
+
+# Files in a directory the program is allowed to read.
+docs <- file.path(tempdir(), "docs")
+dir.create(docs, showWarnings = FALSE)
+writeLines(c("one", "two words", "three more words"), file.path(docs, "a.txt"))
+writeLines(rep("lorem ipsum", 100), file.path(docs, "b.txt"))
+res <- wasm_run(wc, args = c("a.txt", "b.txt"), dirs = docs)
+cat(res$stdout)
+#>       3       6      31 a.txt
+#>     100     200    1200 b.txt
+#>     103     206    1231 total
+```
+
+Anything outside the granted directory doesn’t exist as far as the
+program is concerned:
+
+``` r
+
+wasm_run(wc, args = c("a.txt", "../../etc/passwd"), dirs = docs)
+#> <nanowasm_run> exit status 1
+#> -- stdout --
+#>       3       6      31 a.txt
+#>       3       6      31 total
+#> -- stderr --
+#> wc: ../../etc/passwd: Capabilities insufficient
+```
+
 ## Running code you don’t trust
 
 `untrusted.wasm` loops forever, recurses without end and grabs all the

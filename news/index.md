@@ -37,6 +37,17 @@ Development version, heading for the first release (0.1.0).
   [`wasm_func()`](https://pedrobtz.github.io/nanowasm/reference/wasm_func.md)
   and pass them to `wasm_instantiate(imports = )`. An R function with a
   `caller` argument can reach the calling instance’s memory.
+- WASI:
+  [`wasm_run()`](https://pedrobtz.github.io/nanowasm/reference/wasm_run.md)
+  runs programs compiled for the WebAssembly System Interface (preview
+  1), and
+  [`wasm_wasi()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md)
+  / `wasm_instantiate(wasi = )` /
+  [`wasm_wasi_start()`](https://pedrobtz.github.io/nanowasm/reference/wasm_wasi.md)
+  give finer control. Programs get the arguments and environment you
+  pass, standard streams (console, captured or discarded), R’s clocks
+  and random numbers, and files only inside the directories you grant,
+  read-only unless `writable = TRUE`.
 - [`wasm_limits()`](https://pedrobtz.github.io/nanowasm/reference/wasm_limits.md)
   bounds an instance’s memory, call depth, value stack and time per
   call; Ctrl-C interrupts a running call.
@@ -47,4 +58,5 @@ Development version, heading for the first release (0.1.0).
   WebAssembly runtime is needed.
 - [`vignette("nanowasm")`](https://pedrobtz.github.io/nanowasm/articles/nanowasm.md)
   walks through the API, and the example modules `add.wasm`, `fib.wasm`,
-  `sum.wasm` and `log.wasm` are installed in `extdata/`.
+  `sum.wasm`, `log.wasm`, `hello-wasi.wasm` and `cat-wasi.wasm` are
+  installed in `extdata/`.
