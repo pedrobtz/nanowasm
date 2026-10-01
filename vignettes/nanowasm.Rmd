@@ -261,3 +261,10 @@ provide:
   program with the C standard library.
 * **Rust**, with the `wasm32-unknown-unknown` target and a `cdylib` crate,
   or the `wasm32-wasip1` target for a program.
+
+Code that uses C++ exceptions or C's `setjmp`/`longjmp` needs WebAssembly
+exception handling. nanowasm supports its current encoding, which toolchains
+don't yet emit by default: add `-mllvm -wasm-use-legacy-eh=false` (with
+`-fwasm-exceptions` for C++, or `-mllvm -wasm-enable-sjlj
+-mexception-handling -lsetjmp` for `setjmp`). A module built with the older
+encoding fails to load with a message saying so.

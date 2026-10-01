@@ -45,12 +45,12 @@ condition.
 | Limits | `wasm_limits()` (memory, frames, stack, timeout), the `nanowasm.limits` option, Ctrl-C |
 | WASI | `wasm_wasi()`, `wasm_instantiate(wasi = )`, `wasm_wasi_start()`, `wasm_wasi_output()`, `wasm_run()`: preview 1 in R, with preopened directories (added 2026-10-01, M6) |
 | Conditions | the full class tree in design §8 |
-| Wasm features | MVP + bulk memory, reference types (inside the module only), multi-value, tail calls, extended const, multi-memory, name section |
+| Wasm features | MVP + bulk memory, reference types (inside the module only), multi-value, tail calls, extended const, multi-memory, name section, exception handling (current encoding) |
 | Platforms | Linux, macOS, Windows (Rtools), R ≥ 4.3 |
 
 ### Out of scope (explicitly deferred)
 
-SIMD, exception handling, threads/shared memory, WASI preview 2 and sockets,
+SIMD, the legacy exception-handling encoding, threads/shared memory, WASI preview 2 and sockets,
 `funcref`/`externref` at the R boundary, lossless i64, re-entrant callbacks,
 linking instances to each other, allocator helpers, memory indexing sugar,
 performance tuning.
@@ -303,9 +303,11 @@ one PR each.
       or import name, else `func[N]`) and carry `func`, `backtrace`
       (innermost first, at most 64) and `depth`; so do timeouts and host
       errors. (#60)
-- [ ] Exception handling (the current proposal), for C++ exceptions and
+- [x] Exception handling (the current proposal), for C++ exceptions and
       `setjmp`/`longjmp` built with `-mllvm -wasm-use-legacy-eh=false`;
-      the legacy encoding fails validation cleanly. (#61)
+      the legacy encoding fails validation with a rebuild hint. Two more
+      vendored headers; WAT, C (`setjmp`) and C++ fixtures; tags listed as
+      exports; spec suite unchanged at 18,013 passes. (#61)
 
 Left for after 0.1.0, by the same review: linking instances to each
 other, tables and function references from R, SIMD, and interpreter
@@ -344,7 +346,7 @@ A short list, ordered by expected demand. Each item needs a design note in
 `design.md` before work starts.
 
 1. Opt-in WASI subset in R (design §10). This is the most likely user request.
-2. SIMD, then exception handling (toywasm config flags, size check).
+2. SIMD (toywasm config flag, size check).
 3. Lossless i64 via `bit64` (Suggests).
 4. Re-entrant callbacks; linking instances to each other.
 5. `wasm_with_buffer()` allocator helper.
