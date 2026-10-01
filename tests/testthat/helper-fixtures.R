@@ -25,3 +25,9 @@ withr_tempdir <- function(env = parent.frame()) {
   do.call(on.exit, list(substitute(unlink(dir, recursive = TRUE), list(dir = dir)), add = TRUE), envir = env)
   dir
 }
+
+# writeLines() with "\n" endings on every platform (it writes "\r\n" on
+# Windows), for files a WASI program reads byte for byte.
+write_lines_lf <- function(text, path) {
+  writeBin(charToRaw(paste0(text, "\n", collapse = "")), path)
+}

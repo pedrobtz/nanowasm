@@ -978,6 +978,8 @@ set_mtime <- function(host, mtim, flags) {
   } else if (bitwAnd(flags, 4L) != 0) {
     as.POSIXct(mtim / 1e9, origin = "1970-01-01")
   }
-  if (!is.null(when)) Sys.setFileTime(host, when)
+  if (!is.null(when) && !isTRUE(Sys.setFileTime(host, when))) {
+    return(wasi_errno[["IO"]])
+  }
   0L
 }

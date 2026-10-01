@@ -103,7 +103,7 @@ test_that("files are written, read, seeked and closed", {
 
 test_that("append mode writes at the end and can be switched off", {
   dir <- withr_tempdir()
-  writeLines("start", file.path(dir, "log.txt"))
+  write_lines_lf("start", file.path(dir, "log.txt"))
   p <- probe(dir)
   f <- open_at(p, "log.txt", fdflags = APPEND)
   expect_identical(p$inst$fd_fdstat_get(f$fd, 0L), 0L)
@@ -118,7 +118,7 @@ test_that("append mode writes at the end and can be switched off", {
 
 test_that("descriptors report their type, and stdio can't seek", {
   dir <- withr_tempdir()
-  writeLines("x", file.path(dir, "f"))
+  write_lines_lf("x", file.path(dir, "f"))
   p <- probe(dir)
   type <- function(fd) {
     expect_identical(p$inst$fd_fdstat_get(fd, 0L), 0L)
@@ -155,7 +155,7 @@ test_that("descriptors report their type, and stdio can't seek", {
 
 test_that("read-only descriptors can't be written", {
   dir <- withr_tempdir()
-  writeLines("x", file.path(dir, "f"))
+  write_lines_lf("x", file.path(dir, "f"))
   p <- probe(dir)
   f <- open_at(p, "f", rights = READ)
   expect_identical(write_fd(p, f$fd, "y")$errno, errno[["NOTCAPABLE"]])
@@ -178,8 +178,12 @@ test_that("files grow, shrink and get modification times", {
   # From R, an i64 argument must stay within 2^53 ns (early 1970); the
   # files test sets a real timestamp from C.
   when <- 1e6
-  expect_identical(p$inst$fd_filestat_set_times(f$fd, 0, when * 1e9, 4L), 0L)
-  expect_equal(as.numeric(file.mtime(file.path(dir, "f"))), when, tolerance = 1)
+  if (.Platform$OS.type != "windows") {
+    # Windows doesn't set times this early; a real one is set from C in
+    # test-wasi.R.
+    expect_identical(p$inst$fd_filestat_set_times(f$fd, 0, when * 1e9, 4L), 0L)
+    expect_equal(as.numeric(file.mtime(file.path(dir, "f"))), when, tolerance = 1)
+  }
   a <- path_at(p, "f")
   expect_identical(p$inst$path_filestat_set_times(3L, 0L, a[[1]], a[[2]], 0, 0, 8L), 0L)
   expect_lt(abs(as.numeric(file.mtime(file.path(dir, "f"))) - as.numeric(Sys.time())), 60)
@@ -194,7 +198,7 @@ test_that("files grow, shrink and get modification times", {
 
 test_that("path_open follows its flags", {
   dir <- withr_tempdir()
-  writeLines("x", file.path(dir, "f"))
+  write_lines_lf("x", file.path(dir, "f"))
   dir.create(file.path(dir, "d"))
   p <- probe(dir)
   expect_identical(open_at(p, "f", CREAT + EXCL)$errno, errno[["EXIST"]])
@@ -228,7 +232,7 @@ test_that("path_open follows its flags", {
 
 test_that("directories are listed in pieces with cookies", {
   dir <- withr_tempdir()
-  for (f in c("a", "bb", "ccc")) writeLines("x", file.path(dir, f))
+  for (f in c("a", "bb", "ccc")) write_lines_lf("x", file.path(dir, f))
   p <- probe(dir)
   entries <- function(cookie, size) {
     expect_identical(p$inst$fd_readdir(3L, 2000L, size, cookie, 0L), 0L)
@@ -291,7 +295,7 @@ test_that("directory and file paths are created, renamed and removed", {
   a <- path_at(p, "d", 1200L)
   expect_identical(p$inst$path_create_directory(3L, a[[1]], a[[2]]), 0L)
   expect_identical(p$inst$path_create_directory(3L, a[[1]], a[[2]]), errno[["EXIST"]])
-  writeLines("x", file.path(dir, "d", "f"))
+  write_lines_lf("x", file.path(dir, "d", "f"))
   expect_identical(p$inst$path_remove_directory(3L, a[[1]], a[[2]]), errno[["NOTEMPTY"]])
   expect_identical(p$inst$path_unlink_file(3L, a[[1]], a[[2]]), errno[["ISDIR"]])
 
@@ -317,7 +321,7 @@ test_that("directory and file paths are created, renamed and removed", {
   expect_identical(p$inst$path_filestat_get(4L, 0L, g[[1]], g[[2]], 2000L), errno[["NOENT"]])
   expect_identical(p$inst$path_remove_directory(3L, a[[1]], a[[2]]), 0L)
   expect_identical(p$inst$path_remove_directory(3L, a[[1]], a[[2]]), errno[["NOENT"]])
-  writeLines("x", file.path(dir, "file"))
+  write_lines_lf("x", file.path(dir, "file"))
   file <- path_at(p, "file", 1300L)
   expect_identical(p$inst$path_remove_directory(3L, file[[1]], file[[2]]), errno[["NOTDIR"]])
   bad <- path_at(p, "/abs")

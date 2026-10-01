@@ -47,7 +47,8 @@ test_that("clocks, sleeping and randomness work, reproducibly", {
   realtime <- as.numeric(sub("realtime ", "", lines[[1]]))
   expect_lt(abs(realtime - as.numeric(Sys.time())), 60)
   expect_identical(lines[[2]], "resolution 1000")
-  expect_gte(as.numeric(sub("slept ", "", lines[[3]])), 45)
+  # Windows clocks tick every ~15 ms.
+  expect_gte(as.numeric(sub("slept ", "", lines[[3]])), 30)
   set.seed(42)
   a <- wasm_run(wasi_fixture("clock"))$stdout
   set.seed(42)
@@ -103,14 +104,14 @@ test_that("file errors are WASI errnos", {
     res$stdout,
     "open: errno 44\nrm: errno 44\nrmdir: errno 44\nstat: errno 44\nmv: errno 44\n"
   )
-  writeLines("x", file.path(dir, "f"))
+  write_lines_lf("x", file.path(dir, "f"))
   res <- files("mkdir", "f", "rm", ".", "rmdir", "f", "ls", "f", dirs = dir)
   expect_identical(res$stdout, "mkdir: errno 20\nrm: errno 31\nrmdir: errno 54\nopendir: errno 54\n")
 })
 
 test_that("directories are read-only unless writable = TRUE", {
   dir <- withr_tempdir()
-  writeLines("data", file.path(dir, "in.txt"))
+  write_lines_lf("data", file.path(dir, "in.txt"))
   res <- files("read", "in.txt", "write", "out.txt", "no", "append", "in.txt", "x",
                "mkdir", "d", "rm", "in.txt", "mv", "in.txt", "x.txt", "truncate", "in.txt", "0",
                dirs = dir, writable = FALSE)
@@ -129,7 +130,7 @@ test_that("paths can't leave a granted directory", {
   root <- withr_tempdir()
   dir <- file.path(root, "box")
   dir.create(dir)
-  writeLines("secret", file.path(root, "outside.txt"))
+  write_lines_lf("secret", file.path(root, "outside.txt"))
   res <- files("read", "../outside.txt", "read", "/etc/passwd", "read", "a/../../outside.txt",
                "rmdir", "..", "rm", "../outside.txt", "stat", "..", dirs = dir)
   expect_identical(
@@ -147,7 +148,7 @@ test_that("symbolic links can't lead outside a granted directory", {
   root <- withr_tempdir()
   dir <- file.path(root, "box")
   dir.create(dir)
-  writeLines("secret", file.path(root, "outside.txt"))
+  write_lines_lf("secret", file.path(root, "outside.txt"))
   file.symlink(file.path(root, "outside.txt"), file.path(dir, "link.txt"))
   file.symlink(root, file.path(dir, "up"))
   res <- files("read", "link.txt", "read", "up/outside.txt", dirs = dir)
@@ -157,7 +158,7 @@ test_that("symbolic links can't lead outside a granted directory", {
 test_that("several directories are seen at their names", {
   input <- withr_tempdir()
   output <- withr_tempdir()
-  writeLines("data", file.path(input, "in.txt"))
+  write_lines_lf("data", file.path(input, "in.txt"))
   res <- files("read", "/in/in.txt", "write", "/out/o.txt", "ok", "ls", "/out",
                dirs = c("/in" = input, "/out" = output))
   expect_identical(res$stdout, "read \"data\n\"\nwrote 2\nls: o.txt\n")
@@ -166,7 +167,7 @@ test_that("several directories are seen at their names", {
 
 test_that("the cat example reads files and stdin", {
   dir <- withr_tempdir()
-  writeLines(c("a,b", "1,2"), file.path(dir, "data.csv"))
+  write_lines_lf(c("a,b", "1,2"), file.path(dir, "data.csv"))
   cat_wasm <- example("cat-wasi.wasm")
   expect_identical(wasm_run(cat_wasm, args = "data.csv", dirs = dir)$stdout, "a,b\n1,2\n")
   expect_identical(wasm_run(cat_wasm, stdin = "piped")$stdout, "piped\n")
@@ -255,7 +256,7 @@ test_that("errors other than exit still propagate from _start", {
 
 test_that("programs set real modification times", {
   dir <- withr_tempdir()
-  writeLines("x", file.path(dir, "f"))
+  write_lines_lf("x", file.path(dir, "f"))
   res <- files("touch", "f", "1600000000", dirs = dir)
   expect_identical(res$stdout, "touch ok\n")
   expect_equal(as.numeric(file.mtime(file.path(dir, "f"))), 1600000000, tolerance = 1)
