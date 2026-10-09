@@ -3,8 +3,8 @@
 #
 # Usage: tools/build-wasi-fixtures.sh
 #
-# Builds tests/testthat/fixtures/wasi/*.c, inst/extdata/*-wasi.c and
-# vignettes/articles/wasm/*.c into
+# Builds tests/testthat/fixtures/wasi/*.c and *.cpp, inst/extdata/*-wasi.c
+# and vignettes/articles/wasm/*.c into
 # .wasm files next to them, which are committed. wasi-sdk is pinned and
 # downloaded into a temporary directory (never installed), so the output is
 # byte-identical across machines. Set WASI_SDK to use an existing copy of
@@ -30,15 +30,19 @@ if [ -z "${WASI_SDK:-}" ]; then
   WASI_SDK="$TMP/wasi-sdk-$WASI_SDK_VERSION.0-$platform"
 fi
 
-for src in "$PKG_ROOT"/tests/testthat/fixtures/wasi/*.c "$PKG_ROOT"/inst/extdata/*-wasi.c \
-           "$PKG_ROOT"/vignettes/articles/wasm/*.c; do
+for src in "$PKG_ROOT"/tests/testthat/fixtures/wasi/*.c "$PKG_ROOT"/tests/testthat/fixtures/wasi/*.cpp \
+           "$PKG_ROOT"/inst/extdata/*-wasi.c "$PKG_ROOT"/vignettes/articles/wasm/*.c; do
   [ -e "$src" ] || continue
-  out="${src%.c}.wasm"
-  # A source that needs extra flags names them on its first line:
+  case "$src" in
+    *.cpp) cc="$WASI_SDK/bin/clang++"; out="${src%.cpp}.wasm" ;;
+    *) cc="$WASI_SDK/bin/clang"; out="${src%.c}.wasm" ;;
+  esac
+  # A source that needs extra flags (compiler or linker; they go last)
+  # names them on its first line:
   #   // wasi-sdk: -mexec-model=reactor
   flags="$(sed -n '1s|^// wasi-sdk: ||p' "$src")"
   # shellcheck disable=SC2086 # flags are deliberately split
-  "$WASI_SDK/bin/clang" --target=wasm32-wasip1 -Oz -s $flags \
-    -ffile-prefix-map="$PKG_ROOT"=. -o "$out" "$src"
+  "$cc" --target=wasm32-wasip1 -Oz -s \
+    -ffile-prefix-map="$PKG_ROOT"=. -o "$out" "$src" $flags
   echo "built ${out#"$PKG_ROOT"/} ($(wc -c < "$out" | tr -d ' ') bytes)"
 done

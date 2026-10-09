@@ -169,7 +169,7 @@ link_imports <- function(module, imports, call) {
 }
 
 plural_kind <- function(kind) {
-  c(memory = "memories", table = "tables", global = "globals")[kind]
+  c(memory = "memories", table = "tables", global = "globals", tag = "tags")[kind]
 }
 
 # The closure the C trampoline calls as wrapper(args, self): it returns

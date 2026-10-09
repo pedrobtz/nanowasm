@@ -26,6 +26,10 @@ Development version, heading for the first release (0.1.0).
   branches).
 * `wasm_limits()` bounds an instance's memory, call depth, value stack and
   time per call; Ctrl-C interrupts a running call.
+* WebAssembly exception handling (the current encoding) is enabled, so C++
+  exceptions and C `setjmp`/`longjmp` work in modules built with
+  `-mllvm -wasm-use-legacy-eh=false`; modules using the legacy encoding
+  fail to load with a message saying how to rebuild them.
 * A trap names the function it happened in, and its condition carries the
   WebAssembly call stack (`func`, `backtrace`, `depth`).
 * Every failure is a classed condition (`nanowasm_trap`,

@@ -48,7 +48,7 @@
 /* WebAssembly proposals. SIMD and exception handling are planned for after
    0.1.0; threads, WASI and dynamic linking are out of scope. */
 /* #undef TOYWASM_ENABLE_WASM_SIMD */
-/* #undef TOYWASM_ENABLE_WASM_EXCEPTION_HANDLING */
+#define TOYWASM_ENABLE_WASM_EXCEPTION_HANDLING
 #define TOYWASM_EXCEPTION_MAX_CELLS 4
 #define TOYWASM_ENABLE_WASM_EXTENDED_CONST
 #define TOYWASM_ENABLE_WASM_MULTI_MEMORY

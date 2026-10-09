@@ -108,7 +108,7 @@ is fixed by hand, and lists every upstream option:
 |---|---|---|
 | `TOYWASM_ENABLE_WASM_THREADS`, `_WASI*`, `_DYLD*`, `USE_USER_SCHED` | off | Out of scope. They pull in pthreads/POSIX I/O. |
 | `TOYWASM_ENABLE_WASM_SIMD` | off in v0.1 | Adds a lot of code. Enable in a later phase when a user needs it (Emscripten `-msimd128`). |
-| `TOYWASM_ENABLE_WASM_EXCEPTION_HANDLING` | off in v0.1 | Same reasoning. Revisit for C++/Emscripten modules. |
+| `TOYWASM_ENABLE_WASM_EXCEPTION_HANDLING` | **on** (M7) | C++ exceptions and `setjmp`/`longjmp`. toywasm implements the current encoding (`try_table`, `throw_ref`, `exnref`), not the legacy one (`try`/`catch`/`rethrow`/`delegate`), which wasi-sdk 34 and Emscripten still emit by default; a legacy module fails validation with a hint to rebuild with `-mllvm -wasm-use-legacy-eh=false`. Exceptions don't cross into R: one escaping an export is a `uncaught_exception` trap, and `exnref` can't be passed. |
 | `TOYWASM_ENABLE_WASM_TAILCALL`, `_EXTENDED_CONST`, `_MULTI_MEMORY` | on | Cheap, and modern toolchains emit them. |
 | `TOYWASM_ENABLE_WASM_NAME_SECTION` | on | Function names in trap messages. |
 | `TOYWASM_ENABLE_HEAP_TRACKING` | **on** | Required for the memory limit (§7). |
