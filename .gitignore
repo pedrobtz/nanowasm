@@ -1,8 +1,11 @@
 docs
-src/*.o
-src/*.so
-src/*.dll
-src/toywasm/*.o
+# Compiled objects at any depth: src/*.o would miss src/toywasm/ and any
+# later subfolder.
+*.o
+*.so
+*.dll
+*.dylib
+*.a
 /doc/
 /Meta/
 .claude/settings.local.json
